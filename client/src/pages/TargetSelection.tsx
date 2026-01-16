@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
+import CryptographicWaterfallBackground from "@/components/CryptographicWaterfallBackground";
 
 const TARGETS = ["Cipher", "Phantom", "Vector", "Specter", "Nexus"] as const;
 
@@ -33,6 +34,7 @@ export default function TargetSelection({
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background p-4">
       <AnimatedPurpleBackground />
+      <CryptographicWaterfallBackground hideBackground className="z-[3]" />
       
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center gap-12">

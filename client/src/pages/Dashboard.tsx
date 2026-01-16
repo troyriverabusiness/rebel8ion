@@ -4,6 +4,7 @@ import {
   DashboardSidebar,
   OverviewTab,
   OSINTEngineTab,
+  GoogleMeetAttackTab,
   ExecuteAttackTab,
   type TabType,
 } from "@/components/dashboard";
@@ -45,6 +46,9 @@ export default function Dashboard({ targetName, onBack }: DashboardProps) {
             )}
             {activeTab === "osint" && osintData && (
               <OSINTEngineTab osintData={osintData} />
+            )}
+            {activeTab === "gmeet" && (
+              <GoogleMeetAttackTab targetName={targetName} />
             )}
             {activeTab === "attack" && (
               <ExecuteAttackTab

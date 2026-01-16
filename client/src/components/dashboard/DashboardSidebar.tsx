@@ -3,6 +3,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   Search,
+  Video,
   Crosshair,
   ArrowLeft,
   type LucideIcon,
@@ -15,7 +16,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-export type TabType = "overview" | "osint" | "attack";
+export type TabType = "overview" | "osint" | "gmeet" | "attack";
 
 interface NavItem {
   id: TabType;
@@ -26,6 +27,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "osint", label: "OSINT Engine", icon: Search },
+  { id: "gmeet", label: "Google Meet Attack", icon: Video },
   { id: "attack", label: "Execute Attack", icon: Crosshair },
 ];
 

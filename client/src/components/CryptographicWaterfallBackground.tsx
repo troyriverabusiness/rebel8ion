@@ -58,7 +58,15 @@ const createHexAtlasTexture = () => {
   return texture;
 };
 
-function CryptographicWaterfallBackground() {
+interface CryptographicWaterfallBackgroundProps {
+  hideBackground?: boolean;
+  className?: string;
+}
+
+function CryptographicWaterfallBackground({ 
+  hideBackground = false,
+  className = "",
+}: CryptographicWaterfallBackgroundProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -338,8 +346,10 @@ function CryptographicWaterfallBackground() {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-0 pointer-events-none">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.85)_0%,rgba(17,17,17,0.6)_35%,rgba(124,58,237,0.12)_70%,rgba(124,58,237,0.2)_100%)]" />
+    <div className={`fixed inset-0 z-0 pointer-events-none ${className}`}>
+      {!hideBackground && (
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.85)_0%,rgba(17,17,17,0.6)_35%,rgba(124,58,237,0.12)_70%,rgba(124,58,237,0.2)_100%)]" />
+      )}
       <div ref={containerRef} className="absolute inset-0" />
     </div>
   );
