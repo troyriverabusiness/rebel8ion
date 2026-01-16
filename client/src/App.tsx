@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Dashboard from "@/components/Dashboard";
+import Dashboard from "@/pages/Dashboard";
 import TargetSelection from "@/pages/TargetSelection";
 
 type ViewType = "target-selection" | "dashboard";
