@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import CryptographicWaterfallBackground from "@/components/CryptographicWaterfallBackground";
 
 const TARGETS = ["Cipher", "Phantom", "Vector", "Specter", "Nexus"] as const;
 
@@ -23,8 +24,9 @@ function App() {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background p-4">
+      <CryptographicWaterfallBackground />
       {/* Subtle grid background */}
-      <div className="fixed inset-0 bg-[linear-gradient(rgba(168,85,247,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(168,85,247,0.03)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none" />
+      <div className="fixed inset-0 z-[1] bg-[linear-gradient(rgba(168,85,247,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(168,85,247,0.03)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none" />
       
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center gap-12">
