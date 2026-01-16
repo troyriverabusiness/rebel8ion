@@ -1,16 +1,6 @@
 import { useState } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import Dashboard from "@/components/Dashboard";
-import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
-
-const TARGETS = ["Cipher", "Phantom", "Vector", "Specter", "Nexus"] as const;
+import TargetSelection from "@/pages/TargetSelection";
 
 type ViewType = "target-selection" | "dashboard";
 
@@ -19,19 +9,13 @@ function App() {
   const [currentView, setCurrentView] = useState<ViewType>("target-selection");
 
   const handlePenetrate = () => {
-    if (selectedTarget) {
-      console.log(`[REVEL8] Initiating penetration sequence on target: ${selectedTarget}`);
-      setCurrentView("dashboard");
-    } else {
-      console.log("[REVEL8] No target selected");
-    }
+    setCurrentView("dashboard");
   };
 
   const handleBackToTargetSelection = () => {
     setCurrentView("target-selection");
   };
 
-  // Render Dashboard when in dashboard view
   if (currentView === "dashboard" && selectedTarget) {
     return (
       <Dashboard
@@ -41,63 +25,12 @@ function App() {
     );
   }
 
-  // Render Target Selection screen
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background p-4">
-      <AnimatedPurpleBackground />
-      
-      {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center gap-12">
-        {/* Logo / Title */}
-        <div className="flex flex-col items-center gap-2">
-          <h1 className="text-4xl font-light tracking-[0.4em] text-foreground/90">
-            REVEL<span className="text-primary text-glow-purple">8</span>
-          </h1>
-          <div className="h-px w-24 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-        </div>
-
-        {/* Control Panel */}
-        <div className="flex flex-col items-center gap-6 w-full max-w-xs">
-          {/* Target Selector */}
-          <div className="w-full">
-            <label className="block text-xs text-muted-foreground mb-2 tracking-wider uppercase">
-              Select Target
-            </label>
-            <Select value={selectedTarget} onValueChange={setSelectedTarget}>
-              <SelectTrigger className="w-full h-12 bg-card/50 border-border/50 hover:border-primary/30 transition-colors">
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
-              <SelectContent className="bg-card border-border/50">
-                {TARGETS.map((target) => (
-                  <SelectItem
-                    key={target}
-                    value={target}
-                    className="cursor-pointer hover:bg-primary/10 focus:bg-primary/10 focus:text-foreground"
-                  >
-                    {target}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Penetrate Button */}
-          <Button
-            onClick={handlePenetrate}
-            disabled={!selectedTarget}
-            className="w-full h-12 text-sm tracking-widest uppercase font-medium bg-primary/90 hover:bg-primary hover:glow-purple-sm transition-all duration-300 disabled:opacity-30 disabled:hover:bg-primary/90"
-          >
-            Penetrate
-          </Button>
-        </div>
-
-        {/* Status indicator */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
-          <span className="tracking-wider">SYSTEM READY</span>
-        </div>
-      </div>
-    </div>
+    <TargetSelection
+      selectedTarget={selectedTarget}
+      onTargetChange={setSelectedTarget}
+      onPenetrate={handlePenetrate}
+    />
   );
 }
 
