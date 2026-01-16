@@ -7,26 +7,44 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import CryptographicWaterfallBackground from "@/components/CryptographicWaterfallBackground";
+import Dashboard from "@/components/Dashboard";
+import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
 
 const TARGETS = ["Cipher", "Phantom", "Vector", "Specter", "Nexus"] as const;
 
+type ViewType = "target-selection" | "dashboard";
+
 function App() {
   const [selectedTarget, setSelectedTarget] = useState<string>("");
+  const [currentView, setCurrentView] = useState<ViewType>("target-selection");
 
   const handlePenetrate = () => {
     if (selectedTarget) {
       console.log(`[REVEL8] Initiating penetration sequence on target: ${selectedTarget}`);
+      setCurrentView("dashboard");
     } else {
       console.log("[REVEL8] No target selected");
     }
   };
 
+  const handleBackToTargetSelection = () => {
+    setCurrentView("target-selection");
+  };
+
+  // Render Dashboard when in dashboard view
+  if (currentView === "dashboard" && selectedTarget) {
+    return (
+      <Dashboard
+        targetName={selectedTarget}
+        onBack={handleBackToTargetSelection}
+      />
+    );
+  }
+
+  // Render Target Selection screen
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background p-4">
-      <CryptographicWaterfallBackground />
-      {/* Subtle grid background */}
-      <div className="fixed inset-0 z-[1] bg-[linear-gradient(rgba(168,85,247,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(168,85,247,0.03)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none" />
+      <AnimatedPurpleBackground />
       
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center gap-12">
