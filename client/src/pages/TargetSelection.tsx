@@ -111,7 +111,7 @@ export default function TargetSelection({
                   variant="outline"
                   role="combobox"
                   aria-expanded={open}
-                  className="w-full h-12 justify-between bg-card/50 border-border/50 hover:border-primary/30 transition-colors font-normal"
+                  className="w-full h-12 justify-between bg-card border-border hover:border-primary/70 transition-colors font-normal"
                 >
                   {selectedTarget ? (
                     <span className="truncate">{selectedTarget}</span>
