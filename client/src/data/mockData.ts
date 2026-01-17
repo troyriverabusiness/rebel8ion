@@ -58,6 +58,40 @@ export interface OSINTData {
   osintCompletionPercentage: number;
 }
 
+// Type guard to check if a payload is valid OSINT data
+export function isOSINTPayload(data: unknown): data is OSINTData {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Check for required top-level properties
+  if (
+    typeof obj.companyProfile !== "object" ||
+    obj.companyProfile === null ||
+    !Array.isArray(obj.techStack) ||
+    !Array.isArray(obj.socialMedia) ||
+    !Array.isArray(obj.keyPersonnel) ||
+    !Array.isArray(obj.vulnerabilities) ||
+    !Array.isArray(obj.attackVectors) ||
+    typeof obj.osintCompletionPercentage !== "number"
+  ) {
+    return false;
+  }
+
+  // Check companyProfile has required fields
+  const profile = obj.companyProfile as Record<string, unknown>;
+  if (
+    typeof profile.name !== "string" ||
+    typeof profile.domain !== "string"
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 // Mock data for each target company
 export const MOCK_OSINT_DATA: Record<string, OSINTData> = {
   Cipher: {

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Search,
   Building2,
@@ -16,7 +17,37 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const LOADING_PHRASES = [
+  "Gathering intelligence",
+  "Scanning digital footprint",
+  "Analyzing threat vectors",
+  "Mapping attack surface",
+  "Probing vulnerabilities",
+  "Collecting OSINT data",
+  "Processing reconnaissance"
+];
+
 export default function OSINTEngineTabSkeleton() {
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [dotCount, setDotCount] = useState(1);
+
+  useEffect(() => {
+    // Cycle dots every 500ms
+    const dotInterval = setInterval(() => {
+      setDotCount((prev) => (prev % 3) + 1);
+    }, 500);
+
+    // Cycle phrases every 3 seconds
+    const phraseInterval = setInterval(() => {
+      setPhraseIndex((prev) => (prev + 1) % LOADING_PHRASES.length);
+    }, 3000);
+
+    return () => {
+      clearInterval(dotInterval);
+      clearInterval(phraseInterval);
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -26,7 +57,8 @@ export default function OSINTEngineTabSkeleton() {
           OSINT Engine
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Gathering intelligence...
+          {LOADING_PHRASES[phraseIndex]}
+          {".".repeat(dotCount)}
         </p>
       </div>
 

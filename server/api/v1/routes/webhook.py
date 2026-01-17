@@ -31,28 +31,41 @@ async def receive_make_webhook(request: Request):
         # Log the received webhook data
         logger.info(f"Received webhook from Make: {payload}")
         
-        # Process the webhook data here
-        # You can add your custom logic to handle the data
+        # Handle Make.com's wrapped format: {"text": "{...escaped JSON...}"}
+        if "text" in payload and isinstance(payload["text"], str):
+            try:
+                # Parse the nested JSON string
+                unwrapped_payload = json.loads(payload["text"])
+                logger.info(f"Unwrapped Make payload: {unwrapped_payload}")
+                
+                # Use the unwrapped payload
+                final_payload = unwrapped_payload
+            except json.JSONDecodeError:
+                logger.warning("Could not parse 'text' field as JSON, using original payload")
+                final_payload = payload
+        else:
+            # Use original payload if not wrapped
+            final_payload = payload
         
-        # Example: Extract common fields if they exist
-        event_type = payload.get("event_type")
-        data = payload.get("data")
-        timestamp = payload.get("timestamp")
+        # Extract common fields if they exist
+        event_type = final_payload.get("event_type")
+        data = final_payload.get("data")
+        timestamp = final_payload.get("timestamp")
         
         logger.info(f"Event Type: {event_type}")
         logger.info(f"Data: {data}")
         logger.info(f"Timestamp: {timestamp}")
         
-        # Store the event and notify subscribers
-        webhook_events.append(payload)
+        # Store the unwrapped event and notify subscribers
+        webhook_events.append(final_payload)
         for queue in event_subscribers:
-            await queue.put(payload)
+            await queue.put(final_payload)
         
         # Return a success response
         return {
             "status": "success",
             "message": "Webhook received successfully",
-            "received_data": payload
+            "received_data": final_payload
         }
         
     except Exception as e:

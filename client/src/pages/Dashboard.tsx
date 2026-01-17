@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DashboardSidebar,
@@ -9,31 +9,22 @@ import {
   ExecuteAttackTab,
   type TabType,
 } from "@/components/dashboard";
-import { getOSINTData } from "@/data/mockData";
+import { type OSINTData } from "@/data/mockData";
 import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
 
 interface DashboardProps {
   targetName: string;
   onBack: () => void;
+  osintData: OSINTData | null;
 }
 
-export default function Dashboard({ targetName, onBack }: DashboardProps) {
+export default function Dashboard({ targetName, onBack, osintData }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isLoadingOSINT, setIsLoadingOSINT] = useState(true);
-  const osintData = getOSINTData(targetName);
 
+  // Loading state is determined by whether we have OSINT data
+  const isLoadingOSINT = !osintData;
   const isOsintComplete = osintData?.osintCompletionPercentage === 100;
-
-  // Simulate 10 seconds loading for OSINT data
-  useEffect(() => {
-    setIsLoadingOSINT(true);
-    const timer = setTimeout(() => {
-      setIsLoadingOSINT(false);
-    }, 10000); // 10 seconds
-
-    return () => clearTimeout(timer);
-  }, [targetName]);
 
   return (
     <div className="min-h-screen w-full flex bg-background">
