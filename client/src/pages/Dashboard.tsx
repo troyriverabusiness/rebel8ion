@@ -54,7 +54,11 @@ export default function Dashboard({ targetName, onBack }: DashboardProps) {
         <ScrollArea className="h-screen">
           <div className="p-6">
             {activeTab === "overview" && (
-              <OverviewTab targetName={targetName} osintData={osintData} />
+              <OverviewTab 
+                targetName={targetName} 
+                osintData={osintData} 
+                isLoading={isLoadingOSINT}
+              />
             )}
             {activeTab === "osint" && (
               isLoadingOSINT ? (

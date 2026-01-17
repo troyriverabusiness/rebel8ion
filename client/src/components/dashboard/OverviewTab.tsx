@@ -14,14 +14,16 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ACTIVITY_LOG, type OSINTData } from "@/data/mockData";
 
 interface OverviewTabProps {
   targetName: string;
   osintData: OSINTData | null;
+  isLoading?: boolean;
 }
 
-export default function OverviewTab({ targetName, osintData }: OverviewTabProps) {
+export default function OverviewTab({ targetName, osintData, isLoading = false }: OverviewTabProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -44,27 +46,39 @@ export default function OverviewTab({ targetName, osintData }: OverviewTabProps)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-light">
-                {osintData?.osintCompletionPercentage || 0}%
-              </span>
-              <Badge
-                variant={
-                  osintData?.osintCompletionPercentage === 100
-                    ? "default"
-                    : "secondary"
-                }
-                className="bg-primary/20 text-primary border-0"
-              >
-                {osintData?.osintCompletionPercentage === 100
-                  ? "Complete"
-                  : "In Progress"}
-              </Badge>
-            </div>
-            <Progress
-              value={osintData?.osintCompletionPercentage || 0}
-              className="mt-2 h-1"
-            />
+            {isLoading ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+                <Skeleton className="mt-2 h-1 w-full" />
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-2xl font-light">
+                    {osintData?.osintCompletionPercentage || 0}%
+                  </span>
+                  <Badge
+                    variant={
+                      osintData?.osintCompletionPercentage === 100
+                        ? "default"
+                        : "secondary"
+                    }
+                    className="bg-primary/20 text-primary border-0"
+                  >
+                    {osintData?.osintCompletionPercentage === 100
+                      ? "Complete"
+                      : "In Progress"}
+                  </Badge>
+                </div>
+                <Progress
+                  value={osintData?.osintCompletionPercentage || 0}
+                  className="mt-2 h-1"
+                />
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -76,9 +90,13 @@ export default function OverviewTab({ targetName, osintData }: OverviewTabProps)
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-light">
-                {osintData?.vulnerabilities.length || 0}
-              </span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <span className="text-2xl font-light">
+                  {osintData?.vulnerabilities.length || 0}
+                </span>
+              )}
               <AlertTriangle className="h-5 w-5 text-destructive/70" />
             </div>
             <p className="text-xs text-muted-foreground mt-1">Discovered</p>
@@ -93,9 +111,13 @@ export default function OverviewTab({ targetName, osintData }: OverviewTabProps)
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-light">
-                {osintData?.attackVectors.length || 0}
-              </span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <span className="text-2xl font-light">
+                  {osintData?.attackVectors.length || 0}
+                </span>
+              )}
               <Target className="h-5 w-5 text-primary/70" />
             </div>
             <p className="text-xs text-muted-foreground mt-1">Identified</p>
@@ -110,9 +132,13 @@ export default function OverviewTab({ targetName, osintData }: OverviewTabProps)
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
-              <span className="text-2xl font-light">
-                {osintData?.keyPersonnel.length || 0}
-              </span>
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <span className="text-2xl font-light">
+                  {osintData?.keyPersonnel.length || 0}
+                </span>
+              )}
               <Users className="h-5 w-5 text-muted-foreground" />
             </div>
             <p className="text-xs text-muted-foreground mt-1">Profiled</p>
