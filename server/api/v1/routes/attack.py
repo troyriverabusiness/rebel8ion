@@ -11,7 +11,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # TODO: Configure webhook URL
-WEBHOOK_URL = "https://hook.eu2.make.com/nuu3vf4kj5mwgcjg2j2sy3ws5f2rlx7l"  # TODO: Replace with actual webhook URL
+WEBHOOK_URL = "https://hook.eu2.make.com/fbplc0c274wxk4d5nrfjbg35xv48pdsl"  # TODO: Replace with actual webhook URL
 
 
 
