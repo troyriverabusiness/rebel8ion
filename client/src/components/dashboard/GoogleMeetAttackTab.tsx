@@ -29,8 +29,7 @@ import {
   isAgentStartedEvent,
   isGoalCompletedEvent,
 } from "@/types/agent";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+import { apiFetch, createSSEConnection } from "@/lib/api";
 
 type MeetStatus = "idle" | "starting" | "joining" | "active" | "completed" | "failed";
 
@@ -129,26 +128,18 @@ export default function GoogleMeetAttackTab({ targetName }: GoogleMeetAttackTabP
    * Listen for SSE events.
    */
   useEffect(() => {
-    const eventSource = new EventSource(`${API_BASE_URL}/api/v1/webhook/stream`);
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    const disconnect = createSSEConnection("/api/v1/webhook/stream", {
+      onMessage: (data) => {
         if (isAgentEvent(data)) {
           handleAgentEvent(data);
         }
-      } catch (err) {
-        console.error("Error parsing SSE event:", err);
-      }
-    };
+      },
+      onError: (err) => {
+        console.error("SSE connection error:", err);
+      },
+    });
 
-    eventSource.onerror = (err) => {
-      console.error("SSE connection error:", err);
-    };
-
-    return () => {
-      eventSource.close();
-    };
+    return disconnect;
   }, [handleAgentEvent]);
 
   /**
@@ -165,7 +156,7 @@ export default function GoogleMeetAttackTab({ targetName }: GoogleMeetAttackTabP
     setCurrentStatus("starting");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/agent/start`, {
+      const response = await apiFetch("/api/v1/agent/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

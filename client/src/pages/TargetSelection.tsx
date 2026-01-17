@@ -9,6 +9,7 @@ import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
 import CryptographicWaterfallBackground from "@/components/CryptographicWaterfallBackground";
 import { WebhookTestButton } from "@/components/WebhookTestButton";
 import { ChevronDown, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 interface Company {
   name: string;
@@ -21,8 +22,6 @@ interface TargetSelectionProps {
   onTargetChange: (target: string) => void;
   onPenetrate: () => void;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function TargetSelection({
   selectedTarget,
@@ -44,8 +43,7 @@ export default function TargetSelection({
 
     setSearching(true);
     try {
-      const url = `${API_BASE_URL}/api/v1/companies/search?query=${encodeURIComponent(query)}`;
-      const response = await fetch(url);
+      const response = await apiFetch(`/api/v1/companies/search?query=${encodeURIComponent(query)}`);
       if (!response.ok) {
         throw new Error(`Search failed: ${response.status}`);
       }
@@ -71,17 +69,17 @@ export default function TargetSelection({
   const handlePenetrate = async () => {
     if (selectedTarget) {
       console.log(`[REVEL8] Initiating penetration sequence on target: ${selectedTarget}`);
-      
+
       // Send company name to server, which will forward to webhook
       try {
-        const response = await fetch(`${API_BASE_URL}/api/v1/target/select`, {
+        const response = await apiFetch('/api/v1/target/select', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ company_name: selectedTarget }),
         });
-        
+
         if (!response.ok) {
           console.error('[REVEL8] Failed to send target to webhook:', response.status);
         } else {
@@ -91,7 +89,7 @@ export default function TargetSelection({
       } catch (error) {
         console.error('[REVEL8] Error sending target to webhook:', error);
       }
-      
+
       onPenetrate();
     } else {
       console.log("[REVEL8] No target selected");

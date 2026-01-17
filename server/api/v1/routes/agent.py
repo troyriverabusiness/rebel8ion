@@ -6,9 +6,12 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict
 
+import httpx
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from api.v1.routes.webhook import broadcast_event
+from config import config
 from models.agent_models import (
     GoalCompletedRequest,
     GoalCompletedResponse,
@@ -236,3 +239,69 @@ async def list_sessions() -> Dict[str, Any]:
             for s in sessions
         ],
     }
+
+
+class SignedUrlResponse(BaseModel):
+    """Response model for signed URL endpoint."""
+    signed_url: str
+
+
+@router.get("/agent/signed-url", response_model=SignedUrlResponse)
+async def get_signed_url() -> SignedUrlResponse:
+    """
+    Get a signed URL for ElevenLabs WebSocket connection.
+
+    This endpoint is called by the agent webpage to authenticate
+    with ElevenLabs using WebSocket mode instead of WebRTC.
+    WebSocket mode works better in headless browser environments like Recall.ai.
+
+    Returns:
+        SignedUrlResponse with the signed URL for WebSocket connection.
+
+    Raises:
+        HTTPException: If the ElevenLabs API call fails.
+    """
+    logger.info("Requesting ElevenLabs signed URL")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url",
+                params={"agent_id": config.elevenlabs_agent_id},
+                headers={"xi-api-key": config.elevenlabs_api_key},
+                timeout=30.0,
+            )
+
+            if response.status_code != 200:
+                error_body = response.text
+                logger.error(f"ElevenLabs API error: {response.status_code} - {error_body}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Failed to get signed URL from ElevenLabs: {response.status_code}",
+                )
+
+            data = response.json()
+            signed_url = data.get("signed_url")
+
+            if not signed_url:
+                logger.error(f"ElevenLabs response missing signed_url: {data}")
+                raise HTTPException(
+                    status_code=502,
+                    detail="ElevenLabs response missing signed_url",
+                )
+
+            logger.info("Successfully obtained ElevenLabs signed URL")
+            return SignedUrlResponse(signed_url=signed_url)
+
+    except httpx.TimeoutException as e:
+        logger.error(f"Timeout getting signed URL: {e}")
+        raise HTTPException(
+            status_code=504,
+            detail="Request to ElevenLabs timed out",
+        )
+    except httpx.RequestError as e:
+        logger.error(f"Request error getting signed URL: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to connect to ElevenLabs: {e}",
+        )

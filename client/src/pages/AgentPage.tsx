@@ -3,8 +3,8 @@
 
 import { useConversation } from "@elevenlabs/react";
 import { useCallback, useEffect, useState, useRef } from "react";
+import { apiFetch } from "@/lib/api";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const ELEVENLABS_AGENT_ID =
   import.meta.env.VITE_ELEVENLABS_AGENT_ID || "";
 
@@ -19,12 +19,26 @@ interface GoalCompletedParams {
 export default function AgentPage() {
   const [statusText, setStatusText] = useState<string>("Initializing...");
   const [error, setError] = useState<string | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
   const hasStartedRef = useRef(false);
+
+  // Helper to add visible logs
+  const addLog = (message: string) => {
+    console.log(`[AgentPage] ${message}`);
+    setLogs((prev) => [...prev.slice(-9), `${new Date().toISOString().slice(11, 19)} ${message}`]);
+  };
 
   // Parse URL params from Recall.ai bot URL
   // Note: scenario removed - agent prompt is now hardcoded in ElevenLabs dashboard
   const urlParams = new URLSearchParams(window.location.search);
   const sessionId = urlParams.get("session_id") || "";
+
+  // Log on mount
+  useEffect(() => {
+    addLog(`Page loaded. URL: ${window.location.href}`);
+    addLog(`Agent ID configured: ${ELEVENLABS_AGENT_ID ? "yes" : "NO"}`);
+    addLog(`Session ID: ${sessionId || "MISSING"}`);
+  }, []);
 
   /**
    * Signal goal completion to the backend API.
@@ -38,18 +52,15 @@ export default function AgentPage() {
       }
 
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/v1/agent/goal-completed`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              session_id: sessionId,
-              outcome,
-              summary,
-            }),
-          }
-        );
+        const response = await apiFetch("/api/v1/agent/goal-completed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            session_id: sessionId,
+            outcome,
+            summary,
+          }),
+        });
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -118,12 +129,6 @@ export default function AgentPage() {
 
     const startSession = async () => {
       // Validate required configuration
-      if (!ELEVENLABS_AGENT_ID) {
-        setError("Missing ELEVENLABS_AGENT_ID configuration");
-        setStatusText("Configuration error");
-        return;
-      }
-
       if (!sessionId) {
         setError("Missing session_id in URL parameters");
         setStatusText("Configuration error");
@@ -132,23 +137,43 @@ export default function AgentPage() {
 
       hasStartedRef.current = true;
       setStatusText("Requesting microphone access...");
+      addLog("Requesting microphone access...");
 
       try {
-        // Request microphone permission
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Request microphone permission (in Recall.ai, this returns meeting audio)
+        addLog("Calling getUserMedia...");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        addLog(`Got media stream: ${stream.getAudioTracks().length} audio tracks`);
+
+        // Get signed URL from backend for WebSocket authentication
+        // WebSocket mode works better in Recall.ai's headless browser environment
+        setStatusText("Getting authentication...");
+        addLog("Fetching signed URL from backend...");
+        const signedUrlResponse = await apiFetch("/api/v1/agent/signed-url");
+
+        if (!signedUrlResponse.ok) {
+          const errorText = await signedUrlResponse.text();
+          throw new Error(`Failed to get signed URL: ${signedUrlResponse.status} - ${errorText}`);
+        }
+
+        const { signed_url: signedUrl } = await signedUrlResponse.json();
+        addLog("Got signed URL, connecting to ElevenLabs...");
         setStatusText("Connecting to ElevenLabs...");
 
-        // Start the conversation session with WebRTC for voice
+        // Start the conversation session with WebSocket mode (works better in headless browsers)
+        addLog("Starting ElevenLabs session with WebSocket mode...");
         const conversationId = await conversation.startSession({
-          agentId: ELEVENLABS_AGENT_ID,
-          connectionType: "webrtc",
+          signedUrl,
+          connectionType: "websocket",
         });
 
-        console.log("ElevenLabs session started:", conversationId);
+        addLog(`ElevenLabs session started: ${conversationId}`);
+        setStatusText("Connected - Conversation active");
       } catch (err) {
-        console.error("Failed to start ElevenLabs session:", err);
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error";
+        addLog(`ERROR: ${errorMessage}`);
+        console.error("[AgentPage] Failed to start ElevenLabs session:", err);
         setError(errorMessage);
         setStatusText(`Failed: ${errorMessage}`);
         hasStartedRef.current = false;
@@ -200,14 +225,22 @@ export default function AgentPage() {
           </div>
         )}
 
-        {/* Debug info (only in development) */}
-        {import.meta.env.DEV && (
-          <div className="text-gray-500 text-xs font-mono mt-4 space-y-1">
-            <div>Session: {sessionId || "none"}</div>
-            <div>Agent: {ELEVENLABS_AGENT_ID || "none"}</div>
-            <div>Status: {conversation.status}</div>
-          </div>
-        )}
+        {/* Debug info - always visible for troubleshooting */}
+        <div className="text-gray-500 text-xs font-mono mt-4 space-y-1">
+          <div>Session: {sessionId || "none"}</div>
+          <div>Agent: {ELEVENLABS_AGENT_ID ? `${ELEVENLABS_AGENT_ID.slice(0, 10)}...` : "none"}</div>
+          <div>Status: {conversation.status}</div>
+          <div>isSpeaking: {String(conversation.isSpeaking)}</div>
+        </div>
+
+        {/* Live logs */}
+        <div className="mt-4 w-full max-w-md bg-black/50 p-2 rounded text-xs font-mono text-green-400 space-y-0.5 max-h-40 overflow-y-auto">
+          {logs.length === 0 ? (
+            <div className="text-gray-600">Waiting for logs...</div>
+          ) : (
+            logs.map((log, i) => <div key={i}>{log}</div>)
+          )}
+        </div>
       </div>
     </div>
   );
