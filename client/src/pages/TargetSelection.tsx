@@ -21,7 +21,7 @@ interface TargetSelectionProps {
   onPenetrate: () => void;
 }
 
-const CLEARBIT_API_URL = "https://autocomplete.clearbit.com/v1/companies/suggest";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function TargetSelection({
   selectedTarget,
@@ -33,7 +33,7 @@ export default function TargetSelection({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Search companies using Clearbit API
+  // Search companies using backend proxy
   const searchCompanies = useCallback(async (query: string) => {
     if (!query || query.trim().length === 0) {
       setSearchResults([]);
@@ -43,7 +43,7 @@ export default function TargetSelection({
 
     setSearching(true);
     try {
-      const url = `${CLEARBIT_API_URL}?query=${encodeURIComponent(query)}`;
+      const url = `${API_BASE_URL}/api/v1/companies/search?query=${encodeURIComponent(query)}`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Search failed: ${response.status}`);
