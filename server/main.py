@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
-from api.v1.routes import health, sec, target, webhook, osint
+from api.v1.routes import health, sec, target, webhook, osint, attack
 
 app = FastAPI(title="Revel8 Server")
 
@@ -21,6 +21,7 @@ app.include_router(sec.router, prefix="/api/v1", tags=["sec"])
 app.include_router(target.router, prefix="/api/v1", tags=["target"])
 app.include_router(webhook.router, prefix="/api/v1", tags=["webhook"])
 app.include_router(osint.router, prefix="/api/v1", tags=["osint"])
+app.include_router(attack.router, prefix="/api/v1", tags=["attack"])
 
 
 def main():
