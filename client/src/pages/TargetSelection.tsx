@@ -1,26 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
 import CryptographicWaterfallBackground from "@/components/CryptographicWaterfallBackground";
-import { ChevronDown, Loader2, RefreshCw } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 
 interface Company {
   name: string;
-  domain?: string;
-  logo?: string | null;
+  domain: string;
+  logo: string | null;
 }
 
 interface TargetSelectionProps {
@@ -29,51 +21,17 @@ interface TargetSelectionProps {
   onPenetrate: () => void;
 }
 
-const SEC_API_URL = "http://localhost:8000/api/v1/sec/companies";
 const CLEARBIT_API_URL = "https://autocomplete.clearbit.com/v1/companies/suggest";
-const PRELOADED_COMPANIES_COUNT = 50;
 
 export default function TargetSelection({
   selectedTarget,
   onTargetChange,
   onPenetrate,
 }: TargetSelectionProps) {
-  const [preloadedCompanies, setPreloadedCompanies] = useState<Company[]>([]);
   const [searchResults, setSearchResults] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Fetch top 50 companies from SEC API on mount
-  const fetchPreloadedCompanies = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(SEC_API_URL);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
-      }
-      const data = await response.json();
-      // Transform the object into an array of companies and take top 50
-      const companyArray: Company[] = Object.values(data)
-        .slice(0, PRELOADED_COMPANIES_COUNT)
-        .map((c: unknown) => {
-          const company = c as { cik_str: number; ticker: string; title: string };
-          return {
-            name: company.title,
-            domain: undefined,
-            logo: null,
-          };
-        });
-      setPreloadedCompanies(companyArray);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load companies");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Search companies using Clearbit API
   const searchCompanies = useCallback(async (query: string) => {
@@ -85,11 +43,12 @@ export default function TargetSelection({
 
     setSearching(true);
     try {
-      const response = await fetch(`${CLEARBIT_API_URL}?query=${encodeURIComponent(query)}`);
+      const url = `${CLEARBIT_API_URL}?query=${encodeURIComponent(query)}`;
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Search failed: ${response.status}`);
       }
-      const data = await response.json();
+      const data: Company[] = await response.json();
       setSearchResults(data);
     } catch (err) {
       console.error("Search error:", err);
@@ -97,10 +56,6 @@ export default function TargetSelection({
     } finally {
       setSearching(false);
     }
-  }, []);
-
-  useEffect(() => {
-    fetchPreloadedCompanies();
   }, []);
 
   // Debounced search
@@ -127,9 +82,6 @@ export default function TargetSelection({
     setSearchQuery("");
   };
 
-  // Determine which companies to display
-  const displayedCompanies = searchQuery.trim().length > 0 ? searchResults : preloadedCompanies;
-
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background p-4">
       <AnimatedPurpleBackground />
@@ -153,89 +105,67 @@ export default function TargetSelection({
               Select Target
             </label>
             
-            {error ? (
-              <div className="flex flex-col items-center gap-3 py-4">
-                <p className="text-sm text-destructive">{error}</p>
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={fetchPreloadedCompanies}
-                  className="gap-2"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-full h-12 justify-between bg-card/50 border-border/50 hover:border-primary/30 transition-colors font-normal"
                 >
-                  <RefreshCw className="size-4" />
-                  Retry
+                  {selectedTarget ? (
+                    <span className="truncate">{selectedTarget}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Search companies...</span>
+                  )}
+                  <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
                 </Button>
-              </div>
-            ) : (
-              <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className="w-full h-12 justify-between bg-card/50 border-border/50 hover:border-primary/30 transition-colors font-normal"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="size-4 animate-spin" />
-                        Loading companies...
-                      </span>
-                    ) : selectedTarget ? (
-                      <span className="truncate">{selectedTarget}</span>
-                    ) : (
-                      <span className="text-muted-foreground">Search companies...</span>
-                    )}
-                    <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent 
-                  className="w-[var(--radix-popover-trigger-width)] p-0 bg-card border-border/50"
-                  align="start"
-                >
-                  <Command shouldFilter={false}>
-                    <CommandInput 
-                      placeholder="Type to search..." 
-                      className="h-10"
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                    />
-                    <CommandList>
-                      {searching ? (
-                        <div className="flex items-center justify-center py-6">
-                          <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : displayedCompanies.length === 0 && searchQuery.trim().length > 0 ? (
-                        <CommandEmpty>No companies found.</CommandEmpty>
-                      ) : (
-                        <CommandGroup>
-                          {displayedCompanies.map((company, index) => (
-                            <CommandItem
-                              key={`${company.name}-${index}`}
-                              value={company.name}
-                              onSelect={handleSelectCompany}
-                              className="cursor-pointer hover:bg-primary/10 data-[selected=true]:bg-primary/10 flex items-center justify-between"
-                            >
-                              <span className="truncate">{company.name}</span>
-                              {company.domain && (
-                                <span className="text-muted-foreground text-sm ml-2 shrink-0">
-                                  ({company.domain})
-                                </span>
-                              )}
-                            </CommandItem>
-                          ))}
-                          {!searchQuery && displayedCompanies.length > 0 && (
-                            <div className="py-2 px-2 text-xs text-muted-foreground text-center border-t border-border/30">
-                              Showing top {PRELOADED_COMPANIES_COUNT} companies. Type to search more...
-                            </div>
-                          )}
-                        </CommandGroup>
-                      )}
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            )}
+              </PopoverTrigger>
+              <PopoverContent 
+                className="w-[var(--radix-popover-trigger-width)] p-0 bg-card border-border/50"
+                align="start"
+              >
+                <div className="flex items-center border-b px-3">
+                  <input
+                    type="text"
+                    placeholder="Type to search companies..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+                <div className="max-h-[300px] overflow-y-auto p-1">
+                  {searching ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : searchQuery.trim().length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      Start typing to search companies...
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      No companies found.
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {searchResults.map((company, index) => (
+                        <button
+                          key={`${company.domain}-${index}`}
+                          onClick={() => handleSelectCompany(company.name)}
+                          className="w-full flex items-center justify-between px-2 py-2 text-sm rounded-sm hover:bg-primary/10 focus:bg-primary/10 outline-none cursor-pointer"
+                        >
+                          <span className="truncate">{company.name}</span>
+                          <span className="text-muted-foreground text-sm ml-2 shrink-0">
+                            ({company.domain})
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Penetrate Button */}
@@ -251,9 +181,7 @@ export default function TargetSelection({
         {/* Status indicator */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
           <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
-          <span className="tracking-wider">
-            {loading ? "LOADING DATA..." : error ? "CONNECTION ERROR" : "SYSTEM READY"}
-          </span>
+          <span className="tracking-wider">SYSTEM READY</span>
         </div>
       </div>
     </div>
