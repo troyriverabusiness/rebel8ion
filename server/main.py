@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
-from api.v1.routes import health, sec, target, webhook, osint, attack
+from api.v1.routes import health, sec, target, webhook, osint, attack, agent
 
 app = FastAPI(title="Revel8 Server")
 
