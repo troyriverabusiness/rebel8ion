@@ -11,10 +11,8 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 # TODO: Configure webhook URL
-WEBHOOK_URL = "https://example.com/webhook"  # TODO: Replace with actual webhook URL
+WEBHOOK_URL = "https://hook.eu2.make.com/nuu3vf4kj5mwgcjg2j2sy3ws5f2rlx7l"  # TODO: Replace with actual webhook URL
 
-# TODO: Configure individual attack webhook URL
-INDIVIDUAL_WEBHOOK_URL = "https://example.com/individual-webhook"  # TODO: Replace with actual webhook URL
 
 
 class AttackRequest(BaseModel):
@@ -238,7 +236,7 @@ async def execute_individual_attack(request: IndividualAttackRequest):
     
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(INDIVIDUAL_WEBHOOK_URL, json=payload)
+            response = await client.post(WEBHOOK_URL, json=payload)
             
             if response.status_code in [200, 201, 202]:
                 logger.info(f"[INDIVIDUAL ATTACK] Webhook sent successfully for: {request.name}")
@@ -284,7 +282,7 @@ async def get_webhook_config():
     """
     return {
         "webhook_url": WEBHOOK_URL,
-        "individual_webhook_url": INDIVIDUAL_WEBHOOK_URL,
+        "individual_webhook_url": WEBHOOK_URL,
         "status": "configured" if WEBHOOK_URL != "https://example.com/webhook" else "not_configured",
-        "individual_status": "configured" if INDIVIDUAL_WEBHOOK_URL != "https://example.com/individual-webhook" else "not_configured"
+        "individual_status": "configured" if WEBHOOK_URL != "https://example.com/individual-webhook" else "not_configured"
     }
