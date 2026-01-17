@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/popover";
 import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
 import CryptographicWaterfallBackground from "@/components/CryptographicWaterfallBackground";
+import { WebhookTestButton } from "@/components/WebhookTestButton";
 import { ChevronDown, Loader2 } from "lucide-react";
 
 interface Company {
@@ -200,9 +201,14 @@ export default function TargetSelection({
         </div>
 
         {/* Status indicator */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
-          <span className="tracking-wider">SYSTEM READY</span>
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
+            <span className="tracking-wider">SYSTEM READY</span>
+          </div>
+          
+          {/* Test Webhook Button */}
+          <WebhookTestButton />
         </div>
       </div>
     </div>
