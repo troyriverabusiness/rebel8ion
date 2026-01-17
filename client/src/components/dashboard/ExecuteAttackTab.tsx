@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Crosshair, Users, Mail, Phone, Instagram } from "lucide-react";
+import { Crosshair, Users, Mail, Phone, Instagram, ChevronDown, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +10,11 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { toast } from "sonner";
 
 interface ExecuteAttackTabProps {
@@ -42,6 +47,12 @@ export default function ExecuteAttackTab({
   const [osintData, setOsintData] = useState<CompanyOSINTData | null>(null);
   const [isFetchingData, setIsFetchingData] = useState(false);
   const [employeeList, setEmployeeList] = useState<any[]>([]);
+  
+  // Individual attack state
+  const [expandedEmployee, setExpandedEmployee] = useState<number | null>(null);
+  const [customEmail, setCustomEmail] = useState<string>("");
+  const [customPhone, setCustomPhone] = useState<string>("");
+  const [isIndividualAttacking, setIsIndividualAttacking] = useState(false);
 
   // Fetch employee list on component mount or when enabled/targetName changes
   useEffect(() => {
@@ -106,6 +117,69 @@ export default function ExecuteAttackTab({
       return null;
     } finally {
       setIsFetchingData(false);
+    }
+  };
+
+  const handleToggleExpand = (idx: number, person: any) => {
+    if (expandedEmployee === idx) {
+      // Collapse if already expanded
+      setExpandedEmployee(null);
+      setCustomEmail("");
+      setCustomPhone("");
+    } else {
+      // Expand and pre-fill with OSINT data
+      setExpandedEmployee(idx);
+      setCustomEmail(person.email || "");
+      setCustomPhone(person.phone || "");
+    }
+  };
+
+  const handleIndividualAttack = async (employee: any) => {
+    setIsIndividualAttacking(true);
+    
+    try {
+      console.log(`[REVEL8] Executing individual attack on: ${employee.name}`);
+      
+      const response = await fetch(
+        `http://localhost:8000/api/v1/attack/individual`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: employee.name,
+            company_position: employee.role,
+            email: customEmail || undefined,
+            phone: customPhone || undefined,
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log(`[REVEL8] Individual attack result:`, result);
+      
+      toast.success("Individual attack executed", {
+        description: `Successfully targeted ${employee.name}`,
+      });
+      
+      // Collapse the form after successful attack
+      setExpandedEmployee(null);
+      setCustomEmail("");
+      setCustomPhone("");
+      
+    } catch (error) {
+      console.error("[REVEL8] Error executing individual attack:", error);
+      toast.error("Individual attack failed", {
+        description: error instanceof Error ? error.message : "Could not execute attack. Please try again.",
+      });
+    } finally {
+      setIsIndividualAttacking(false);
     }
   };
 
@@ -248,10 +322,14 @@ export default function ExecuteAttackTab({
           </CardHeader>
           <CardContent className="space-y-0">
             {employeeList.map((person: any, idx: number) => (
-              <div key={idx}>
-                <div className="flex items-center justify-between py-3 gap-6">
+              <Collapsible
+                key={idx}
+                open={expandedEmployee === idx}
+                onOpenChange={() => handleToggleExpand(idx, person)}
+              >
+                <div className="flex items-center justify-between py-3 gap-4">
                   {/* Left: Name and Role */}
-                  <div className="flex-shrink-0 w-64">
+                  <div className="flex-shrink-0 w-48">
                     <p className="text-sm font-medium text-foreground">
                       {person.name}
                     </p>
@@ -294,30 +372,111 @@ export default function ExecuteAttackTab({
                     )}
                   </div>
 
-                  {/* Right: Risk Level Badge */}
-                  {person.riskLevel && (
-                    <Badge
-                      variant={
-                        person.riskLevel === "high"
-                          ? "destructive"
-                          : person.riskLevel === "medium"
-                          ? "outline"
-                          : "secondary"
-                      }
-                      className={`uppercase tracking-wider flex-shrink-0 ${
-                        person.riskLevel === "medium"
-                          ? "bg-yellow-500/20 text-yellow-500 border-yellow-500/30"
-                          : person.riskLevel === "low"
-                          ? "bg-green-500/20 text-green-500 border-green-500/30"
-                          : ""
-                      }`}
-                    >
-                      {person.riskLevel}
-                    </Badge>
-                  )}
+                  {/* Right: Risk Level Badge + Individual Attack Button */}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {person.riskLevel && (
+                      <Badge
+                        variant={
+                          person.riskLevel === "high"
+                            ? "destructive"
+                            : person.riskLevel === "medium"
+                            ? "outline"
+                            : "secondary"
+                        }
+                        className={`uppercase tracking-wider ${
+                          person.riskLevel === "medium"
+                            ? "bg-yellow-500/20 text-yellow-500 border-yellow-500/30"
+                            : person.riskLevel === "low"
+                            ? "bg-green-500/20 text-green-500 border-green-500/30"
+                            : ""
+                        }`}
+                      >
+                        {person.riskLevel}
+                      </Badge>
+                    )}
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3 text-xs gap-1.5 border-primary/30 hover:border-primary hover:bg-primary/10"
+                      >
+                        <Target className="h-3 w-3" />
+                        Attack
+                        <ChevronDown
+                          className={`h-3 w-3 transition-transform duration-200 ${
+                            expandedEmployee === idx ? "rotate-180" : ""
+                          }`}
+                        />
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
                 </div>
+
+                {/* Collapsible Attack Form */}
+                <CollapsibleContent>
+                  <div className="pb-4 pt-1 pl-4 border-l-2 border-primary/30 ml-2 mb-2">
+                    <div className="bg-background/50 rounded-lg p-4 space-y-4">
+                      <p className="text-xs text-muted-foreground">
+                        Customize attack parameters for <span className="text-primary font-medium">{person.name}</span>
+                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Email Input */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                            <Mail className="h-3 w-3" />
+                            Email (optional)
+                          </label>
+                          <input
+                            type="email"
+                            value={customEmail}
+                            onChange={(e) => setCustomEmail(e.target.value)}
+                            placeholder="target@company.com"
+                            className="w-full h-9 px-3 text-sm bg-background border border-border/50 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary placeholder:text-muted-foreground/50 font-mono"
+                          />
+                        </div>
+                        
+                        {/* Phone Input */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                            <Phone className="h-3 w-3" />
+                            Phone (optional)
+                          </label>
+                          <input
+                            type="tel"
+                            value={customPhone}
+                            onChange={(e) => setCustomPhone(e.target.value)}
+                            placeholder="+1-555-000-0000"
+                            className="w-full h-9 px-3 text-sm bg-background border border-border/50 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary placeholder:text-muted-foreground/50 font-mono"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Execute Button */}
+                      <Button
+                        onClick={() => handleIndividualAttack(person)}
+                        disabled={isIndividualAttacking}
+                        size="sm"
+                        className="w-full h-10 text-xs tracking-wider uppercase font-medium bg-primary/90 hover:bg-primary"
+                      >
+                        {isIndividualAttacking ? (
+                          <span className="flex items-center gap-2">
+                            <span className="w-3 h-3 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+                            Executing...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <Target className="h-3 w-3" />
+                            Execute Individual Attack
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+
                 {idx < employeeList.length - 1 && <Separator />}
-              </div>
+              </Collapsible>
             ))}
           </CardContent>
         </Card>

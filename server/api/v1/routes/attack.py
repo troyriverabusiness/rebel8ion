@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 # TODO: Configure webhook URL
 WEBHOOK_URL = "https://example.com/webhook"  # TODO: Replace with actual webhook URL
 
+# TODO: Configure individual attack webhook URL
+INDIVIDUAL_WEBHOOK_URL = "https://example.com/individual-webhook"  # TODO: Replace with actual webhook URL
+
 
 class AttackRequest(BaseModel):
     """Request model for executing an attack"""
@@ -28,6 +31,22 @@ class AttackResponse(BaseModel):
     failed_webhooks: int
     execution_time: str
     details: List[Dict[str, Any]]
+
+
+class IndividualAttackRequest(BaseModel):
+    """Request model for executing an individual attack on a specific employee"""
+    name: str
+    company_position: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+class IndividualAttackResponse(BaseModel):
+    """Response model for individual attack execution"""
+    status: str
+    target_name: str
+    webhook_sent: bool
+    message: str
 
 
 async def send_employee_webhook(employee: Dict[str, Any], company_name: str) -> Dict[str, Any]:
@@ -183,6 +202,78 @@ async def execute_attack(request: AttackRequest):
     )
 
 
+@router.post("/attack/individual", response_model=IndividualAttackResponse)
+async def execute_individual_attack(request: IndividualAttackRequest):
+    """
+    Execute an individual attack against a specific employee.
+    
+    This endpoint:
+    1. Takes employee details (name, position, optional email/phone)
+    2. Applies default values if email/phone not provided
+    3. Forwards the payload to the configured webhook URL
+    
+    Args:
+        request: IndividualAttackRequest containing employee details
+        
+    Returns:
+        IndividualAttackResponse with execution result
+    """
+    logger.info(f"[INDIVIDUAL ATTACK] Initiating attack on: {request.name} ({request.company_position})")
+    
+    # TODO: Replace these default values with actual defaults
+    email = request.email or "TODO_DEFAULT_EMAIL@example.com"  # TODO: Replace with actual default email
+    phone = request.phone or "+1-000-000-0000"  # TODO: Replace with actual default phone number
+    
+    # Build payload for the webhook
+    payload = {
+        "name": request.name,
+        "company_position": request.company_position,
+        "email": email,
+        "phone": phone,
+        "timestamp": datetime.utcnow().isoformat(),
+        "attack_type": "individual"
+    }
+    
+    logger.info(f"[INDIVIDUAL ATTACK] Payload: {payload}")
+    
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(INDIVIDUAL_WEBHOOK_URL, json=payload)
+            
+            if response.status_code in [200, 201, 202]:
+                logger.info(f"[INDIVIDUAL ATTACK] Webhook sent successfully for: {request.name}")
+                return IndividualAttackResponse(
+                    status="success",
+                    target_name=request.name,
+                    webhook_sent=True,
+                    message=f"Individual attack executed successfully against {request.name}"
+                )
+            else:
+                logger.warning(f"[INDIVIDUAL ATTACK] Webhook failed for: {request.name} - Status: {response.status_code}")
+                return IndividualAttackResponse(
+                    status="failed",
+                    target_name=request.name,
+                    webhook_sent=False,
+                    message=f"Webhook returned status {response.status_code}"
+                )
+    except httpx.TimeoutException:
+        logger.error(f"[INDIVIDUAL ATTACK] Webhook timeout for: {request.name}")
+        return IndividualAttackResponse(
+            status="failed",
+            target_name=request.name,
+            webhook_sent=False,
+            message="Webhook request timed out"
+        )
+    except Exception as e:
+        logger.error(f"[INDIVIDUAL ATTACK] Webhook error for: {request.name} - Error: {str(e)}")
+        return IndividualAttackResponse(
+            status="failed",
+            target_name=request.name,
+            webhook_sent=False,
+            message=f"Webhook request failed: {str(e)}"
+        )
+
+
 @router.get("/attack/webhook-config")
 async def get_webhook_config():
     """
@@ -193,5 +284,7 @@ async def get_webhook_config():
     """
     return {
         "webhook_url": WEBHOOK_URL,
-        "status": "configured" if WEBHOOK_URL != "https://example.com/webhook" else "not_configured"
+        "individual_webhook_url": INDIVIDUAL_WEBHOOK_URL,
+        "status": "configured" if WEBHOOK_URL != "https://example.com/webhook" else "not_configured",
+        "individual_status": "configured" if INDIVIDUAL_WEBHOOK_URL != "https://example.com/individual-webhook" else "not_configured"
     }
