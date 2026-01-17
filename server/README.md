@@ -25,6 +25,12 @@ uv is **extremely fast** - it's written in Rust and can be 10-100x faster than t
    uv run python main.py
    ```
 
+4. (Optional) Expose locally via ngrok for testing with Recall.ai:
+   ```bash
+   ngrok start --all --config /Users/siddharth/Development/Hackathons/rebel8ion/.ngrok2/ngrok.yml
+   ```
+   This starts tunnels for both frontend (5173) and backend (8000). Update `AGENT_WEBPAGE_URL` in `.env` with the frontend ngrok URL.
+
 ## Adding Dependencies
 
 To add a new dependency:

@@ -2,14 +2,19 @@ import uvicorn
 from fastapi import FastAPI
 
 from fastapi.middleware.cors import CORSMiddleware
-from api.v1.routes import health, sec, target, webhook, osint, attack, agent
+from api.v1.routes import agent, health, sec, target, webhook, osint, attack
 
 app = FastAPI(title="Revel8 Server")
 
-# Configure CORS
+# Configure CORS - allow localhost and ngrok domains
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://farand-louetta-dumpily.ngrok-free.dev",
+    ],
+    allow_origin_regex=r"https://.*\.ngrok-free\.(app|dev)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

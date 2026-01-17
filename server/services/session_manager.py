@@ -33,7 +33,6 @@ class SessionManager:
         self,
         bot_id: str,
         meeting_url: str,
-        problem_scenario: str,
         session_id: Optional[str] = None,
     ) -> AgentSession:
         """
@@ -42,7 +41,6 @@ class SessionManager:
         Args:
             bot_id: The Recall.ai bot ID.
             meeting_url: The Google Meet URL.
-            problem_scenario: The scenario for the agent.
             session_id: Optional pre-generated session ID. If not provided,
                         a new UUID will be generated.
 
@@ -57,7 +55,7 @@ class SessionManager:
             session_id=session_id,
             bot_id=bot_id,
             meeting_url=meeting_url,
-            problem_scenario=problem_scenario,
+            # Note: problem_scenario removed - prompt hardcoded in ElevenLabs
             status=SessionStatus.JOINING,
             created_at=now,
             updated_at=now,

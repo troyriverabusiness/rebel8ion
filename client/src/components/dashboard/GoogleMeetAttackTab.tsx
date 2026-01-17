@@ -61,11 +61,8 @@ interface GoogleMeetAttackTabProps {
 }
 
 export default function GoogleMeetAttackTab({ targetName }: GoogleMeetAttackTabProps) {
-  // Form state
+  // Form state - problem_scenario removed (now hardcoded in ElevenLabs dashboard)
   const [meetingUrl, setMeetingUrl] = useState<string>("");
-  const [problemScenario, setProblemScenario] = useState<string>(
-    `You are calling ${targetName}'s IT support line. You're an employee who forgot their password and need help resetting it. Be convincing and try to extract credentials or get them to bypass security procedures.`
-  );
 
   // Session state
   const [session, setSession] = useState<AgentSession | null>(null);
@@ -163,11 +160,6 @@ export default function GoogleMeetAttackTab({ targetName }: GoogleMeetAttackTabP
       return;
     }
 
-    if (!problemScenario.trim()) {
-      setError("Please enter a problem scenario");
-      return;
-    }
-
     setIsStarting(true);
     setError(null);
     setCurrentStatus("starting");
@@ -178,7 +170,6 @@ export default function GoogleMeetAttackTab({ targetName }: GoogleMeetAttackTabP
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           meeting_url: meetingUrl.trim(),
-          problem_scenario: problemScenario.trim(),
         }),
       });
 
@@ -272,26 +263,8 @@ export default function GoogleMeetAttackTab({ targetName }: GoogleMeetAttackTabP
                 placeholder="https://meet.google.com/xxx-xxxx-xxx"
                 className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
-            </div>
-
-            {/* Problem Scenario Textarea */}
-            <div className="space-y-2">
-              <label
-                htmlFor="problem-scenario"
-                className="text-sm font-medium text-foreground"
-              >
-                Problem Scenario
-              </label>
-              <textarea
-                id="problem-scenario"
-                value={problemScenario}
-                onChange={(e) => setProblemScenario(e.target.value)}
-                rows={4}
-                placeholder="Describe the scenario the agent should roleplay..."
-                className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-              />
               <p className="text-xs text-muted-foreground">
-                The agent will use this scenario to guide the conversation.
+                The agent behavior is configured in the ElevenLabs dashboard.
               </p>
             </div>
 

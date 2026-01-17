@@ -35,12 +35,7 @@ class StartAgentRequest(BaseModel):
         description="Google Meet URL for the agent to join",
         examples=["https://meet.google.com/abc-defg-hij"],
     )
-    problem_scenario: str = Field(
-        ...,
-        description="The problem scenario the agent should roleplay",
-        min_length=10,
-        max_length=2000,
-    )
+    # Note: problem_scenario removed - agent prompt is now hardcoded in ElevenLabs dashboard
 
 
 class GoalCompletedRequest(BaseModel):
@@ -144,7 +139,7 @@ class AgentSession(BaseModel):
     session_id: str
     bot_id: str
     meeting_url: str
-    problem_scenario: str
+    problem_scenario: Optional[str] = None  # Now optional - prompt hardcoded in ElevenLabs
     status: SessionStatus = SessionStatus.PENDING
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

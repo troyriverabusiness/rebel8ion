@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { type OSINTData, isOSINTPayload } from "@/data/mockData";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 type ViewType = "target-selection" | "dashboard";
 
 function App() {
@@ -33,7 +35,7 @@ function App() {
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
-      eventSource = new EventSource("http://localhost:8000/api/v1/webhook/stream");
+      eventSource = new EventSource(`${API_BASE_URL}/api/v1/webhook/stream`);
 
       eventSource.onopen = () => {
         console.log("SSE connection established");

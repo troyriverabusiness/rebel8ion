@@ -22,8 +22,8 @@ export default function AgentPage() {
   const hasStartedRef = useRef(false);
 
   // Parse URL params from Recall.ai bot URL
+  // Note: scenario removed - agent prompt is now hardcoded in ElevenLabs dashboard
   const urlParams = new URLSearchParams(window.location.search);
-  const scenario = urlParams.get("scenario") || "";
   const sessionId = urlParams.get("session_id") || "";
 
   /**
@@ -69,6 +69,7 @@ export default function AgentPage() {
 
   /**
    * Initialize the ElevenLabs conversation with client tools and event handlers.
+   * Note: Agent prompt is hardcoded in ElevenLabs dashboard, no overrides needed.
    */
   const conversation = useConversation({
     clientTools: {
@@ -81,15 +82,6 @@ export default function AgentPage() {
           parameters.summary
         );
         return result;
-      },
-    },
-    overrides: {
-      agent: {
-        prompt: {
-          prompt: scenario
-            ? `You are conducting a support test call. Here is the problem scenario you should roleplay: ${scenario}`
-            : undefined,
-        },
       },
     },
     onConnect: () => {

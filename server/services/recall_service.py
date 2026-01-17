@@ -52,27 +52,23 @@ class RecallService:
             "Accept": "application/json",
         }
 
-    def _build_agent_webpage_url(self, session_id: str, problem_scenario: str) -> str:
+    def _build_agent_webpage_url(self, session_id: str) -> str:
         """
         Build the agent webpage URL with query parameters.
 
         Args:
             session_id: The session ID to pass to the agent.
-            problem_scenario: The scenario for the agent to use.
 
         Returns:
             The complete URL with query parameters.
         """
-        params = urlencode({
-            "session_id": session_id,
-            "scenario": problem_scenario,
-        })
+        # Note: scenario removed - agent prompt is now hardcoded in ElevenLabs dashboard
+        params = urlencode({"session_id": session_id})
         return f"{self._agent_webpage_url}?{params}"
 
     async def create_bot(
         self,
         meeting_url: str,
-        problem_scenario: str,
         session_id: str,
         bot_name: str = "Support Test Agent",
     ) -> Dict[str, Any]:
@@ -81,7 +77,6 @@ class RecallService:
 
         Args:
             meeting_url: The Google Meet URL to join.
-            problem_scenario: The scenario for the agent.
             session_id: The session ID for this agent session.
             bot_name: The display name for the bot in the meeting.
 
@@ -91,7 +86,7 @@ class RecallService:
         Raises:
             RecallAPIError: If the API call fails.
         """
-        agent_url = self._build_agent_webpage_url(session_id, problem_scenario)
+        agent_url = self._build_agent_webpage_url(session_id)
 
         payload = {
             "meeting_url": meeting_url,

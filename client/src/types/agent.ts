@@ -13,10 +13,10 @@ export type SessionStatus =
 
 /**
  * Request payload for starting a new agent session.
+ * Note: problem_scenario removed - agent prompt is now hardcoded in ElevenLabs dashboard.
  */
 export interface StartAgentRequest {
   meeting_url: string;
-  problem_scenario: string;
 }
 
 /**

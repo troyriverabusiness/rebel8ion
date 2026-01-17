@@ -36,7 +36,7 @@ async def start_agent(request: StartAgentRequest) -> StartAgentResponse:
     and loads the agent webpage for voice interaction via ElevenLabs.
 
     Args:
-        request: Contains meeting_url and problem_scenario.
+        request: Contains meeting_url.
 
     Returns:
         StartAgentResponse with session_id, status, and bot_id.
@@ -53,7 +53,6 @@ async def start_agent(request: StartAgentRequest) -> StartAgentResponse:
         # Create the Recall.ai bot with the pre-generated session_id in its URL
         bot_response = await recall_service.create_bot(
             meeting_url=request.meeting_url,
-            problem_scenario=request.problem_scenario,
             session_id=session_id,
         )
 
@@ -70,7 +69,6 @@ async def start_agent(request: StartAgentRequest) -> StartAgentResponse:
         session = await session_manager.create_session(
             bot_id=bot_id,
             meeting_url=request.meeting_url,
-            problem_scenario=request.problem_scenario,
             session_id=session_id,
         )
 
