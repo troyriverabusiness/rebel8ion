@@ -218,16 +218,16 @@ async def execute_individual_attack(request: IndividualAttackRequest):
     """
     logger.info(f"[INDIVIDUAL ATTACK] Initiating attack on: {request.name} ({request.company_position})")
     
-    # TODO: Replace these default values with actual defaults
-    email = request.email or "TODO_DEFAULT_EMAIL@example.com"  # TODO: Replace with actual default email
-    phone = request.phone or "+1-000-000-0000"  # TODO: Replace with actual default phone number
+    # Default contact values for individual attacks
+    email = request.email or "hackathon@revel8.ai"
+    phones = [request.phone] if request.phone else ["+49-171 5588972", "+49 1577 8885845", "+49 1578 3022220"]
     
     # Build payload for the webhook
     payload = {
         "name": request.name,
         "company_position": request.company_position,
         "email": email,
-        "phone": phone,
+        "phones": phones,
         "timestamp": datetime.utcnow().isoformat(),
         "attack_type": "individual"
     }
