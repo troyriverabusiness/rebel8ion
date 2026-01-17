@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DashboardSidebar,
   OverviewTab,
   OSINTEngineTab,
+  OSINTEngineTabSkeleton,
   GoogleMeetAttackTab,
   ExecuteAttackTab,
   type TabType,
@@ -19,9 +20,20 @@ interface DashboardProps {
 export default function Dashboard({ targetName, onBack }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isLoadingOSINT, setIsLoadingOSINT] = useState(true);
   const osintData = getOSINTData(targetName);
 
   const isOsintComplete = osintData?.osintCompletionPercentage === 100;
+
+  // Simulate 10 seconds loading for OSINT data
+  useEffect(() => {
+    setIsLoadingOSINT(true);
+    const timer = setTimeout(() => {
+      setIsLoadingOSINT(false);
+    }, 10000); // 10 seconds
+
+    return () => clearTimeout(timer);
+  }, [targetName]);
 
   return (
     <div className="min-h-screen w-full flex bg-background">
@@ -44,8 +56,12 @@ export default function Dashboard({ targetName, onBack }: DashboardProps) {
             {activeTab === "overview" && (
               <OverviewTab targetName={targetName} osintData={osintData} />
             )}
-            {activeTab === "osint" && osintData && (
-              <OSINTEngineTab osintData={osintData} />
+            {activeTab === "osint" && (
+              isLoadingOSINT ? (
+                <OSINTEngineTabSkeleton />
+              ) : osintData ? (
+                <OSINTEngineTab osintData={osintData} />
+              ) : null
             )}
             {activeTab === "gmeet" && (
               <GoogleMeetAttackTab targetName={targetName} />
