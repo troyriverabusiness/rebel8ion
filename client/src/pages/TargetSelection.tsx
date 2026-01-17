@@ -67,9 +67,30 @@ export default function TargetSelection({
     return () => clearTimeout(timeoutId);
   }, [searchQuery, searchCompanies]);
 
-  const handlePenetrate = () => {
+  const handlePenetrate = async () => {
     if (selectedTarget) {
       console.log(`[REVEL8] Initiating penetration sequence on target: ${selectedTarget}`);
+      
+      // Send company name to server, which will forward to webhook
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/target/select`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ company_name: selectedTarget }),
+        });
+        
+        if (!response.ok) {
+          console.error('[REVEL8] Failed to send target to webhook:', response.status);
+        } else {
+          const data = await response.json();
+          console.log('[REVEL8] Target successfully sent to webhook:', data);
+        }
+      } catch (error) {
+        console.error('[REVEL8] Error sending target to webhook:', error);
+      }
+      
       onPenetrate();
     } else {
       console.log("[REVEL8] No target selected");
