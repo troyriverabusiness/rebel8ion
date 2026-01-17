@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Crosshair } from "lucide-react";
+import { Crosshair, Users, Mail, Phone, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,10 +8,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "sonner";
 
 interface ExecuteAttackTabProps {
   targetName: string;
   isEnabled: boolean;
+}
+
+interface CompanyOSINTData {
+  osint_data: {
+    company_name?: string;
+    data?: any;
+    keyPersonnel?: Array<{
+      name: string;
+      role: string;
+      email: string;
+      phone?: string;
+      linkedin?: string;
+      instagram?: string;
+    }>;
+  };
+  created_at: string;
+  last_updated: string;
 }
 
 export default function ExecuteAttackTab({
@@ -19,15 +37,74 @@ export default function ExecuteAttackTab({
   isEnabled,
 }: ExecuteAttackTabProps) {
   const [isExecuting, setIsExecuting] = useState(false);
+  const [osintData, setOsintData] = useState<CompanyOSINTData | null>(null);
+  const [isFetchingData, setIsFetchingData] = useState(false);
 
-  const handleExecuteAttack = () => {
+  const fetchCompanyOSINTData = async () => {
+    setIsFetchingData(true);
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/v1/osint/company/${encodeURIComponent(targetName)}`
+      );
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          toast.error("No OSINT data found", {
+            description: `No data available for ${targetName}. Please complete OSINT reconnaissance first.`,
+          });
+          return null;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log(`[REVEL8] Retrieved OSINT data for ${targetName}:`, result);
+      toast.success("OSINT data loaded", {
+        description: `Successfully retrieved data for ${targetName}`,
+      });
+      
+      return result.data;
+    } catch (error) {
+      console.error("[REVEL8] Error fetching OSINT data:", error);
+      toast.error("Failed to fetch OSINT data", {
+        description: "Could not retrieve stored reconnaissance data.",
+      });
+      return null;
+    } finally {
+      setIsFetchingData(false);
+    }
+  };
+
+  const handleExecuteAttack = async () => {
     if (!isEnabled) return;
     setIsExecuting(true);
-    console.log(`[REVEL8] Executing multi-channel attack on target: ${targetName}`);
-    // Simulate attack execution
-    setTimeout(() => {
+    
+    // Fetch the stored OSINT data
+    const data = await fetchCompanyOSINTData();
+    
+    if (data) {
+      setOsintData(data);
+      console.log(`[REVEL8] Executing multi-channel attack on target: ${targetName}`);
+      console.log(`[REVEL8] Available data:`, data);
+      
+      // Check if we have personnel data
+      const personnelData = data.osint_data?.keyPersonnel || data.osint_data?.data?.keyPersonnel;
+      if (personnelData && personnelData.length > 0) {
+        toast.success("Attack vectors identified", {
+          description: `Found ${personnelData.length} target(s) with contact information`,
+        });
+      }
+      
+      // Simulate attack execution
+      setTimeout(() => {
+        setIsExecuting(false);
+        toast.success("Attack execution complete", {
+          description: "Multi-channel attack vectors have been deployed.",
+        });
+      }, 3000);
+    } else {
       setIsExecuting(false);
-    }, 3000);
+    }
   };
 
   return (
@@ -76,7 +153,7 @@ export default function ExecuteAttackTab({
           {/* Execute Button */}
           <Button
             onClick={handleExecuteAttack}
-            disabled={!isEnabled || isExecuting}
+            disabled={!isEnabled || isExecuting || isFetchingData}
             size="lg"
             className={`w-full h-14 text-sm tracking-widest uppercase font-medium transition-all duration-300 ${
               isEnabled
@@ -84,10 +161,10 @@ export default function ExecuteAttackTab({
                 : "bg-muted text-muted-foreground"
             }`}
           >
-            {isExecuting ? (
+            {isExecuting || isFetchingData ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
-                Executing...
+                {isFetchingData ? "Loading Data..." : "Executing..."}
               </span>
             ) : (
               <span className="flex items-center gap-2">
@@ -104,6 +181,96 @@ export default function ExecuteAttackTab({
           )}
         </CardContent>
       </Card>
+
+      {/* OSINT Data Display */}
+      {osintData && (
+        <Card className="bg-card/50 border-border/50 w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              Retrieved OSINT Data
+            </CardTitle>
+            <CardDescription>
+              Data loaded from reconnaissance phase
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Metadata */}
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <span className="text-muted-foreground">Last Updated:</span>
+                <p className="text-foreground font-mono">
+                  {new Date(osintData.last_updated).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Created:</span>
+                <p className="text-foreground font-mono">
+                  {new Date(osintData.created_at).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            {/* Personnel Data */}
+            {osintData.osint_data?.keyPersonnel && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Target Personnel ({osintData.osint_data.keyPersonnel.length})
+                </h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {osintData.osint_data.keyPersonnel.map((person: any, idx: number) => (
+                    <Card key={idx} className="bg-background/50 border-border/30">
+                      <CardContent className="p-3 space-y-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {person.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {person.role}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-1 text-xs">
+                          {person.email && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Mail className="h-3 w-3" />
+                              <span className="font-mono">{person.email}</span>
+                            </div>
+                          )}
+                          {person.phone && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              <span className="font-mono">{person.phone}</span>
+                            </div>
+                          )}
+                          {person.instagram && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Instagram className="h-3 w-3" />
+                              <span className="font-mono">@{person.instagram}</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Raw Data Preview */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-foreground">
+                Raw Data Preview
+              </h3>
+              <pre className="text-xs bg-background/50 p-3 rounded border border-border/30 overflow-x-auto max-h-48 overflow-y-auto font-mono">
+                {JSON.stringify(osintData.osint_data, null, 2)}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

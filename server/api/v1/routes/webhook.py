@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import logging
 import asyncio
 import json
 from collections import deque
+from datetime import datetime
 
 router = APIRouter()
 
@@ -15,6 +16,10 @@ logger = logging.getLogger(__name__)
 # Store webhook events to broadcast to connected clients
 webhook_events = deque(maxlen=100)
 event_subscribers = []
+
+# In-memory storage for company OSINT data
+# Structure: {company_name: {osint_data: {...}, timestamp: "...", last_updated: "..."}}
+company_osint_data: Dict[str, Dict[str, Any]] = {}
 
 
 @router.post("/webhook/make")
@@ -51,10 +56,28 @@ async def receive_make_webhook(request: Request):
         event_type = final_payload.get("event_type")
         data = final_payload.get("data")
         timestamp = final_payload.get("timestamp")
+        company_name = final_payload.get("company_name")
         
         logger.info(f"Event Type: {event_type}")
         logger.info(f"Data: {data}")
         logger.info(f"Timestamp: {timestamp}")
+        logger.info(f"Company Name: {company_name}")
+        
+        # Store OSINT data in memory for the specific company
+        if company_name:
+            if company_name not in company_osint_data:
+                company_osint_data[company_name] = {
+                    "osint_data": {},
+                    "created_at": datetime.utcnow().isoformat(),
+                    "last_updated": datetime.utcnow().isoformat()
+                }
+            
+            # Update the company's OSINT data
+            company_osint_data[company_name]["osint_data"].update(final_payload)
+            company_osint_data[company_name]["last_updated"] = datetime.utcnow().isoformat()
+            
+            logger.info(f"Stored OSINT data for company: {company_name}")
+            logger.info(f"Total companies in storage: {len(company_osint_data)}")
         
         # Store the unwrapped event and notify subscribers
         webhook_events.append(final_payload)
@@ -137,4 +160,79 @@ async def stream_webhook_events(request: Request):
             "Connection": "keep-alive",
         }
     )
+
+
+@router.get("/osint/company/{company_name}")
+async def get_company_osint_data(company_name: str):
+    """
+    Retrieve stored OSINT data for a specific company.
+    
+    Args:
+        company_name: The name of the company to retrieve data for
+        
+    Returns:
+        The stored OSINT data for the company, or 404 if not found
+    """
+    if company_name not in company_osint_data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No OSINT data found for company: {company_name}"
+        )
+    
+    return {
+        "status": "success",
+        "company_name": company_name,
+        "data": company_osint_data[company_name]
+    }
+
+
+@router.get("/osint/companies")
+async def list_companies_with_osint_data():
+    """
+    List all companies that have OSINT data stored.
+    
+    Returns:
+        A list of company names and their last update timestamps
+    """
+    companies = [
+        {
+            "company_name": name,
+            "created_at": data.get("created_at"),
+            "last_updated": data.get("last_updated"),
+            "has_data": bool(data.get("osint_data"))
+        }
+        for name, data in company_osint_data.items()
+    ]
+    
+    return {
+        "status": "success",
+        "total_companies": len(companies),
+        "companies": companies
+    }
+
+
+@router.delete("/osint/company/{company_name}")
+async def delete_company_osint_data(company_name: str):
+    """
+    Delete stored OSINT data for a specific company.
+    
+    Args:
+        company_name: The name of the company to delete data for
+        
+    Returns:
+        Success message or 404 if not found
+    """
+    if company_name not in company_osint_data:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No OSINT data found for company: {company_name}"
+        )
+    
+    del company_osint_data[company_name]
+    logger.info(f"Deleted OSINT data for company: {company_name}")
+    
+    return {
+        "status": "success",
+        "message": f"OSINT data for company '{company_name}' has been deleted"
+    }
 

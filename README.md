@@ -15,6 +15,7 @@
 
 - 🎯 **Automated Target Intelligence Gathering** - Collect comprehensive data on target organizations including company profiles, tech stacks, and key personnel
 - 🕵️ **OSINT Engine** - Automated reconnaissance that gathers publicly available information from multiple sources
+- 💾 **Company-Specific Data Storage** - In-memory storage system that organizes OSINT data by company for easy retrieval during attack execution
 - 👥 **Personnel Profiling** - Identify high-value targets within organizations with risk assessment
 - 🔓 **Vulnerability Detection** - Discover security weaknesses and potential attack vectors
 - 📧 **Google Meet Attack Orchestration** - Sophisticated social engineering campaign management
@@ -248,9 +249,14 @@ Submit a target company for OSINT analysis.
 ### Webhook Receiver
 ```
 POST /api/v1/webhook/make
-Body: {JSON payload}
+Body: {
+  "company_name": "Target Corp",
+  "event_type": "osint_complete",
+  "data": {...},
+  "timestamp": "2026-01-17T10:30:00Z"
+}
 ```
-Receive webhook events from external sources.
+Receive webhook events from external sources. Automatically stores OSINT data in memory by company name.
 
 ### SSE Event Stream
 ```
@@ -263,6 +269,25 @@ Establish Server-Sent Events connection for real-time updates.
 GET /api/v1/webhook/status
 ```
 Check webhook system status and connected clients.
+
+### OSINT Data Storage
+
+```
+GET /api/v1/osint/companies
+```
+List all companies with stored OSINT data.
+
+```
+GET /api/v1/osint/company/{company_name}
+```
+Retrieve stored OSINT data for a specific company.
+
+```
+DELETE /api/v1/osint/company/{company_name}
+```
+Delete stored OSINT data for a specific company.
+
+> **Note:** OSINT data is stored in-memory and persists only while the server is running. See [OSINT_STORAGE.md](OSINT_STORAGE.md) for detailed documentation.
 
 ## 🧪 Testing
 
@@ -280,13 +305,18 @@ npm run lint
 
 ### End-to-End Webhook Test
 ```bash
+# Test toast notifications webhook
 ./test_toast_webhook.sh
+
+# Test OSINT storage system
+./test_osint_storage.sh
 ```
 
 ## 📚 Documentation
 
 - **[Architecture Flow](ARCHITECTURE_FLOW.md)** - System architecture and data flow diagrams
 - **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** - Feature implementation details
+- **[OSINT Storage System](OSINT_STORAGE.md)** - In-memory data storage and retrieval guide
 - **[Toast Notifications](TOAST_NOTIFICATIONS.md)** - Real-time notification system guide
 - **[Webhook Setup Guide](server/WEBHOOK_SETUP.md)** - Comprehensive webhook configuration
 - **[Mac Webhook Guide](server/MAC_WEBHOOK_GUIDE.md)** - macOS-specific webhook setup with ngrok
