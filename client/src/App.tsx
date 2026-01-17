@@ -30,7 +30,7 @@ function App() {
   // Listen for webhook events via SSE with automatic reconnection
   useEffect(() => {
     let eventSource: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
       eventSource = new EventSource("http://localhost:8000/api/v1/webhook/stream");

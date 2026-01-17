@@ -2,6 +2,58 @@
 
 > A sophisticated OSINT reconnaissance and social engineering platform for security research and penetration testing
 
+---
+
+## Quick Start (TL;DR)
+
+### Kill Existing Processes
+```bash
+# Kill backend (port 8000)
+lsof -ti:8000 | xargs kill -9 2>/dev/null
+
+# Kill frontend (port 5173)
+lsof -ti:5173 | xargs kill -9 2>/dev/null
+
+# Kill ngrok (if running)
+pkill ngrok 2>/dev/null
+```
+
+### Development Mode
+```bash
+# Terminal 1: Backend
+cd server && source .venv/bin/activate && uv run python main.py
+
+# Terminal 2: Frontend
+cd client && npm run dev
+```
+Open `http://localhost:5173`
+
+### Production Mode (with Voice Agent via ngrok)
+
+**Prerequisites:** `brew install ngrok` and sign up at ngrok.com
+
+```bash
+# Terminal 1: Frontend
+cd client && npm run dev
+
+# Terminal 2: ngrok tunnel
+ngrok http 5173
+# Copy the HTTPS URL (e.g., https://xxx.ngrok-free.app)
+
+# Terminal 3: Update backend config and start
+cd server
+# Edit .env: AGENT_WEBPAGE_URL=https://xxx.ngrok-free.app/agent
+source .venv/bin/activate && uv run python main.py
+```
+
+**Test Voice Agent:**
+1. Open `http://localhost:5173`
+2. Select target → "Penetrate"
+3. Go to "Google Meet Attack" tab
+4. Create a Google Meet, paste URL, click "Start Voice Agent"
+
+---
+
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![React](https://img.shields.io/badge/react-19.2-blue.svg)](https://reactjs.org/)

@@ -19,6 +19,22 @@ webhook_events = deque(maxlen=100)
 event_subscribers = []
 
 
+async def broadcast_event(event_data: Dict[str, Any]) -> None:
+    """
+    Broadcast an event to all connected SSE clients.
+
+    This function can be imported and used by other modules (e.g., agent routes)
+    to send real-time updates to the frontend.
+
+    Args:
+        event_data: The event data to broadcast. Should be JSON-serializable.
+    """
+    logger.info(f"Broadcasting event: {event_data.get('event_type', 'unknown')}")
+    webhook_events.append(event_data)
+    for queue in event_subscribers:
+        await queue.put(event_data)
+
+
 @router.post("/webhook/make")
 async def receive_make_webhook(request: Request):
     """

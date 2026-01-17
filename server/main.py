@@ -22,6 +22,7 @@ app.include_router(target.router, prefix="/api/v1", tags=["target"])
 app.include_router(webhook.router, prefix="/api/v1", tags=["webhook"])
 app.include_router(osint.router, prefix="/api/v1", tags=["osint"])
 app.include_router(attack.router, prefix="/api/v1", tags=["attack"])
+app.include_router(agent.router, prefix="/api/v1", tags=["agent"])
 
 
 def main():
