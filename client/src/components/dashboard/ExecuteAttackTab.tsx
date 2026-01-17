@@ -113,30 +113,48 @@ export default function ExecuteAttackTab({
     if (!isEnabled) return;
     setIsExecuting(true);
     
-    // Fetch the stored OSINT data
-    const data = await fetchCompanyOSINTData();
-    
-    if (data) {
-      setOsintData(data);
+    try {
       console.log(`[REVEL8] Executing multi-channel attack on target: ${targetName}`);
-      console.log(`[REVEL8] Available data:`, data);
       
-      // Check if we have personnel data
-      const personnelData = data.osint_data?.keyPersonnel || data.osint_data?.data?.keyPersonnel;
-      if (personnelData && personnelData.length > 0) {
-        toast.success("Attack vectors identified", {
-          description: `Found ${personnelData.length} target(s) with contact information`,
-        });
+      // Call the attack execution endpoint
+      const response = await fetch(
+        `http://localhost:8000/api/v1/attack/execute`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            company_name: targetName,
+          }),
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP ${response.status}`);
       }
       
-      // Simulate attack execution
-      setTimeout(() => {
-        setIsExecuting(false);
-        toast.success("Attack execution complete", {
-          description: "Multi-channel attack vectors have been deployed.",
-        });
-      }, 3000);
-    } else {
+      const result = await response.json();
+      console.log(`[REVEL8] Attack execution result:`, result);
+      
+      // Show success message with details
+      toast.success("Attack execution complete", {
+        description: `Targeted ${result.total_employees} employees. ${result.successful_webhooks} successful, ${result.failed_webhooks} failed. Time: ${result.execution_time}`,
+      });
+      
+      // Optionally fetch and display the OSINT data
+      const data = await fetchCompanyOSINTData();
+      if (data) {
+        setOsintData(data);
+      }
+      
+    } catch (error) {
+      console.error("[REVEL8] Error executing attack:", error);
+      toast.error("Attack execution failed", {
+        description: error instanceof Error ? error.message : "Could not execute attack. Please try again.",
+      });
+    } finally {
       setIsExecuting(false);
     }
   };
