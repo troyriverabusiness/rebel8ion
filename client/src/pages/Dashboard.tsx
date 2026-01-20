@@ -9,7 +9,7 @@ import {
   ExecuteAttackTab,
   type TabType,
 } from "@/components/dashboard";
-import { type OSINTData } from "@/data/mockData";
+import { type OSINTData } from "@/types/osint";
 import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
 
 interface DashboardProps {

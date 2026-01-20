@@ -19,6 +19,9 @@ build/
 .env.local
 .env.*.local
 
+# ngrok config (contains authtoken)
+.ngrok2/
+
 # Python testing & coverage
 .pytest_cache/
 .coverage

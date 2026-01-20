@@ -2,16 +2,11 @@
 # ABOUTME: Handles agent lifecycle: start, goal completion, and status checking.
 
 import logging
-import uuid
-from datetime import datetime
 from typing import Any, Dict
 
-import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from api.v1.routes.webhook import broadcast_event
-from config import config
 from models.agent_models import (
     GoalCompletedRequest,
     GoalCompletedResponse,
@@ -20,8 +15,11 @@ from models.agent_models import (
     StartAgentRequest,
     StartAgentResponse,
 )
-from services.recall_service import RecallAPIError, recall_service
-from services.session_manager import SessionNotFoundError, session_manager
+from api.v1.data_access.elevenlabs_client import ElevenLabsAPIError
+from api.v1.data_access.http_client import NetworkRequestError, NetworkTimeoutError
+from api.v1.services import agent_service
+from api.v1.services.recall_service import RecallAPIError
+from api.v1.services.session_manager import SessionNotFoundError, session_manager
 
 
 # Configure logging
@@ -50,45 +48,11 @@ async def start_agent(request: StartAgentRequest) -> StartAgentResponse:
     logger.info(f"Starting agent for meeting: {request.meeting_url}")
 
     try:
-        # Pre-generate session ID (needed for the bot URL before bot creation)
-        session_id = str(uuid.uuid4())
-
-        # Create the Recall.ai bot with the pre-generated session_id in its URL
-        bot_response = await recall_service.create_bot(
-            meeting_url=request.meeting_url,
-            session_id=session_id,
-        )
-
-        # Extract bot_id from response (Recall.ai returns 'id' field)
-        bot_id = bot_response.get("id")
-        if not bot_id:
-            logger.error(f"Recall.ai response missing bot ID: {bot_response}")
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to create bot: missing bot ID in response",
-            )
-
-        # Create the session in our session manager with the pre-generated session_id
-        session = await session_manager.create_session(
-            bot_id=bot_id,
-            meeting_url=request.meeting_url,
-            session_id=session_id,
-        )
-
-        # Broadcast the agent_started event via SSE
-        await broadcast_event({
-            "event_type": "agent_started",
-            "session_id": session.session_id,
-            "bot_id": bot_id,
-            "meeting_url": request.meeting_url,
-            "status": SessionStatus.JOINING.value,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-
-        logger.info(f"Agent session started: {session.session_id}")
-
+        result = await agent_service.start_agent(meeting_url=request.meeting_url)
+        session_id = result["session_id"]
+        bot_id = result["bot_id"]
         return StartAgentResponse(
-            session_id=session.session_id,
+            session_id=session_id,
             status=SessionStatus.JOINING,
             bot_id=bot_id,
         )
@@ -129,38 +93,11 @@ async def goal_completed(request: GoalCompletedRequest) -> GoalCompletedResponse
     logger.info(f"Summary: {request.summary}")
 
     try:
-        # Get the session to retrieve the bot_id
-        session = await session_manager.get_session_or_raise(request.session_id)
-
-        # Remove the bot from the call
-        try:
-            await recall_service.remove_bot_from_call(session.bot_id)
-            logger.info(f"Bot {session.bot_id} removed from call")
-        except RecallAPIError as e:
-            # Log but don't fail - the bot may have already left
-            logger.warning(f"Failed to remove bot from call (may have already left): {e}")
-
-        # Update the session status
-        await session_manager.update_session_status(
+        await agent_service.complete_goal(
             session_id=request.session_id,
-            status=SessionStatus.COMPLETED,
             outcome=request.outcome,
             summary=request.summary,
         )
-
-        # Broadcast the goal_completed event via SSE
-        await broadcast_event({
-            "event_type": "goal_completed",
-            "session_id": request.session_id,
-            "bot_id": session.bot_id,
-            "outcome": request.outcome,
-            "summary": request.summary,
-            "status": SessionStatus.COMPLETED.value,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-
-        logger.info(f"Session {request.session_id} marked as completed")
-
         return GoalCompletedResponse(acknowledged=True)
 
     except SessionNotFoundError:
@@ -264,44 +201,24 @@ async def get_signed_url() -> SignedUrlResponse:
     logger.info("Requesting ElevenLabs signed URL")
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://api.elevenlabs.io/v1/convai/conversation/get-signed-url",
-                params={"agent_id": config.elevenlabs_agent_id},
-                headers={"xi-api-key": config.elevenlabs_api_key},
-                timeout=30.0,
-            )
+        signed_url = await agent_service.get_elevenlabs_signed_url()
+        logger.info("Successfully obtained ElevenLabs signed URL")
+        return SignedUrlResponse(signed_url=signed_url)
 
-            if response.status_code != 200:
-                error_body = response.text
-                logger.error(f"ElevenLabs API error: {response.status_code} - {error_body}")
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"Failed to get signed URL from ElevenLabs: {response.status_code}",
-                )
-
-            data = response.json()
-            signed_url = data.get("signed_url")
-
-            if not signed_url:
-                logger.error(f"ElevenLabs response missing signed_url: {data}")
-                raise HTTPException(
-                    status_code=502,
-                    detail="ElevenLabs response missing signed_url",
-                )
-
-            logger.info("Successfully obtained ElevenLabs signed URL")
-            return SignedUrlResponse(signed_url=signed_url)
-
-    except httpx.TimeoutException as e:
+    except NetworkTimeoutError as e:
         logger.error(f"Timeout getting signed URL: {e}")
         raise HTTPException(
             status_code=504,
             detail="Request to ElevenLabs timed out",
         )
-    except httpx.RequestError as e:
+    except NetworkRequestError as e:
         logger.error(f"Request error getting signed URL: {e}")
         raise HTTPException(
             status_code=502,
             detail=f"Failed to connect to ElevenLabs: {e}",
+        )
+    except ElevenLabsAPIError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=str(e),
         )

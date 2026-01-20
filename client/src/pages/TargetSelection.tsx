@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/popover";
 import AnimatedPurpleBackground from "@/components/AnimatedPurpleBackground";
 import CryptographicWaterfallBackground from "@/components/CryptographicWaterfallBackground";
-import { WebhookTestButton } from "@/components/WebhookTestButton";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -15,6 +14,24 @@ interface Company {
   name: string;
   domain: string;
   logo: string | null;
+}
+
+function coerceCompanies(data: unknown): Company[] {
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item): Company | null => {
+      if (!item || typeof item !== "object") return null;
+      const obj = item as Record<string, unknown>;
+      const name = typeof obj.name === "string" ? obj.name : "";
+      const domain = typeof obj.domain === "string" ? obj.domain : "";
+      const logoRaw = obj.logo;
+      const logo =
+        typeof logoRaw === "string" ? logoRaw : logoRaw === null ? null : null;
+
+      if (!name || !domain) return null;
+      return { name, domain, logo };
+    })
+    .filter((x): x is Company => x !== null);
 }
 
 interface TargetSelectionProps {
@@ -32,28 +49,40 @@ export default function TargetSelection({
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const searchSeqRef = useRef(0);
 
-  // Search companies using backend proxy
+  // Search companies via backend proxy (avoids browser CORS/ETP issues).
   const searchCompanies = useCallback(async (query: string) => {
-    if (!query || query.trim().length === 0) {
+    const trimmed = query.trim();
+    if (!trimmed) {
       setSearchResults([]);
       setSearching(false);
       return;
     }
 
+    const seq = ++searchSeqRef.current;
     setSearching(true);
     try {
-      const response = await apiFetch(`/api/v1/companies/search?query=${encodeURIComponent(query)}`);
+      const response = await apiFetch(
+        `/api/v1/companies/search?query=${encodeURIComponent(trimmed)}`
+      );
       if (!response.ok) {
-        throw new Error(`Search failed: ${response.status}`);
+        throw new Error(`Company search failed: ${response.status}`);
       }
-      const data: Company[] = await response.json();
-      setSearchResults(data);
+      const companies = coerceCompanies(await response.json());
+
+      if (seq === searchSeqRef.current) {
+        setSearchResults(companies);
+      }
     } catch (err) {
       console.error("Search error:", err);
-      setSearchResults([]);
+      if (seq === searchSeqRef.current) {
+        setSearchResults([]);
+      }
     } finally {
-      setSearching(false);
+      if (seq === searchSeqRef.current) {
+        setSearching(false);
+      }
     }
   }, []);
 
@@ -204,9 +233,6 @@ export default function TargetSelection({
             <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-pulse" />
             <span className="tracking-wider">SYSTEM READY</span>
           </div>
-          
-          {/* Test Webhook Button */}
-          <WebhookTestButton />
         </div>
       </div>
     </div>

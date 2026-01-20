@@ -27,9 +27,13 @@ uv is **extremely fast** - it's written in Rust and can be 10-100x faster than t
 
 4. (Optional) Expose locally via ngrok for testing with Recall.ai:
    ```bash
-   ngrok start --all --config /Users/siddharth/Development/Hackathons/rebel8ion/.ngrok2/ngrok.yml
+   # Terminal 1: Frontend tunnel
+   ngrok http 5173
+   
+   # Terminal 2: Backend tunnel (if needed)
+   ngrok http 8000
    ```
-   This starts tunnels for both frontend (5173) and backend (8000). Update `AGENT_WEBPAGE_URL` in `.env` with the frontend ngrok URL.
+   Copy the HTTPS URL from the frontend tunnel and update `AGENT_WEBPAGE_URL` in `.env`.
 
 ## Adding Dependencies
 

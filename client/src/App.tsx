@@ -3,7 +3,7 @@ import Dashboard from "@/pages/Dashboard";
 import TargetSelection from "@/pages/TargetSelection";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { type OSINTData, isOSINTPayload } from "@/data/mockData";
+import { coerceOSINTData, isOSINTPayload, type OSINTData } from "@/types/osint";
 import { createSSEConnection } from "@/lib/api";
 
 type ViewType = "target-selection" | "dashboard";
@@ -33,9 +33,10 @@ function App() {
     const handleMessage = (data: unknown) => {
       // Check if this is an OSINT payload
       if (isOSINTPayload(data)) {
-        setOsintData(data);
+        const normalized = coerceOSINTData(data);
+        setOsintData(normalized);
         toast.success("OSINT Data Received", {
-          description: `Intelligence gathered for ${data.companyProfile.name}`,
+          description: `Intelligence gathered for ${normalized.companyProfile.name}`,
           duration: 3000,
         });
       } else if (data && typeof data === "object") {

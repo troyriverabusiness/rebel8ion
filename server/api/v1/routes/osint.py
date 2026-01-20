@@ -1,40 +1,11 @@
 from fastapi import APIRouter, HTTPException
-from typing import Any, Dict
 import logging
-from datetime import datetime
+from api.v1.services import osint_store
 
 router = APIRouter()
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-# In-memory storage for company OSINT data
-# Structure: {company_name: {osint_data: {...}, created_at: "...", last_updated: "..."}}
-company_osint_data: Dict[str, Dict[str, Any]] = {}
-
-
-def store_company_osint(company_name: str, osint_data: Dict[str, Any]) -> None:
-    """
-    Store or update OSINT data for a company.
-    
-    Args:
-        company_name: The name of the company
-        osint_data: The OSINT data to store
-    """
-    if company_name not in company_osint_data:
-        company_osint_data[company_name] = {
-            "osint_data": {},
-            "created_at": datetime.utcnow().isoformat(),
-            "last_updated": datetime.utcnow().isoformat()
-        }
-    
-    # Update the company's OSINT data
-    company_osint_data[company_name]["osint_data"].update(osint_data)
-    company_osint_data[company_name]["last_updated"] = datetime.utcnow().isoformat()
-    
-    logger.info(f"Stored OSINT data for company: {company_name}")
-    logger.info(f"Total companies in storage: {len(company_osint_data)}")
-
 
 @router.get("/osint/company/{company_name}")
 async def get_company_osint_data(company_name: str):
@@ -47,26 +18,17 @@ async def get_company_osint_data(company_name: str):
     Returns:
         The stored OSINT data for the company, or 404 if not found
     """
-    # Try exact match first
-    if company_name in company_osint_data:
+    record = osint_store.get_company_record(company_name)
+    if record:
+        matched_name, data = record
+        if matched_name != company_name:
+            logger.info(f"Found partial match: '{company_name}' -> '{matched_name}'")
         return {
             "status": "success",
-            "company_name": company_name,
-            "data": company_osint_data[company_name]
+            "company_name": matched_name,
+            "data": data,
         }
-    
-    # Try case-insensitive partial match
-    company_name_lower = company_name.lower()
-    for stored_name, stored_data in company_osint_data.items():
-        if (company_name_lower in stored_name.lower() or 
-            stored_name.lower().startswith(company_name_lower)):
-            logger.info(f"Found partial match: '{company_name}' -> '{stored_name}'")
-            return {
-                "status": "success",
-                "company_name": stored_name,
-                "data": stored_data
-            }
-    
+
     raise HTTPException(
         status_code=404,
         detail=f"No OSINT data found for company: {company_name}"
@@ -88,7 +50,7 @@ async def list_companies_with_osint_data():
             "last_updated": data.get("last_updated"),
             "has_data": bool(data.get("osint_data"))
         }
-        for name, data in company_osint_data.items()
+        for name, data in osint_store.company_osint_data.items()
     ]
     
     return {
@@ -109,14 +71,13 @@ async def delete_company_osint_data(company_name: str):
     Returns:
         Success message or 404 if not found
     """
-    if company_name not in company_osint_data:
+    if company_name not in osint_store.company_osint_data:
         raise HTTPException(
             status_code=404,
             detail=f"No OSINT data found for company: {company_name}"
         )
-    
-    del company_osint_data[company_name]
-    logger.info(f"Deleted OSINT data for company: {company_name}")
+
+    osint_store.delete_company_record_exact(company_name)
     
     return {
         "status": "success",

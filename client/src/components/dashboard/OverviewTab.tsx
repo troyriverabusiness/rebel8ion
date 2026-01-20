@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ACTIVITY_LOG, type OSINTData } from "@/data/mockData";
+import { type OSINTData } from "@/types/osint";
 
 interface OverviewTabProps {
   targetName: string;
@@ -205,30 +205,19 @@ export default function OverviewTab({ targetName, osintData, isLoading = false }
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {ACTIVITY_LOG.slice(0, 5).map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        entry.status === "success"
-                          ? "bg-green-500"
-                          : entry.status === "pending"
-                          ? "bg-yellow-500"
-                          : "bg-red-500"
-                      }`}
-                    />
-                    <span className="text-foreground/80">{entry.action}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {entry.target}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-11/12" />
+                <Skeleton className="h-4 w-10/12" />
+                <Skeleton className="h-4 w-9/12" />
+                <Skeleton className="h-4 w-8/12" />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No activity yet. Waiting for webhook events.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

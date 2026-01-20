@@ -2,37 +2,13 @@ from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Any, Dict
 import logging
-import asyncio
-import json
-from collections import deque
-
-from .osint import store_company_osint
+from api.v1.services import event_stream, webhook_service
 
 router = APIRouter()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Store webhook events to broadcast to connected clients
-webhook_events = deque(maxlen=100)
-event_subscribers = []
-
-
-async def broadcast_event(event_data: Dict[str, Any]) -> None:
-    """
-    Broadcast an event to all connected SSE clients.
-
-    This function can be imported and used by other modules (e.g., agent routes)
-    to send real-time updates to the frontend.
-
-    Args:
-        event_data: The event data to broadcast. Should be JSON-serializable.
-    """
-    logger.info(f"Broadcasting event: {event_data.get('event_type', 'unknown')}")
-    webhook_events.append(event_data)
-    for queue in event_subscribers:
-        await queue.put(event_data)
 
 
 @router.post("/webhook/make")
@@ -48,22 +24,8 @@ async def receive_make_webhook(request: Request):
         
         # Log the received webhook data
         logger.info(f"Received webhook from Make: {payload}")
-        
-        # Handle Make.com's wrapped format: {"text": "{...escaped JSON...}"}
-        if "text" in payload and isinstance(payload["text"], str):
-            try:
-                # Parse the nested JSON string
-                unwrapped_payload = json.loads(payload["text"])
-                logger.info(f"Unwrapped Make payload: {unwrapped_payload}")
-                
-                # Use the unwrapped payload
-                final_payload = unwrapped_payload
-            except json.JSONDecodeError:
-                logger.warning("Could not parse 'text' field as JSON, using original payload")
-                final_payload = payload
-        else:
-            # Use original payload if not wrapped
-            final_payload = payload
+
+        final_payload = await webhook_service.process_make_webhook(payload)
         
         # Extract common fields if they exist
         event_type = final_payload.get("event_type")
@@ -79,15 +41,6 @@ async def receive_make_webhook(request: Request):
         logger.info(f"Data: {data}")
         logger.info(f"Timestamp: {timestamp}")
         logger.info(f"Company Name: {company_name}")
-        
-        # Store OSINT data in memory for the specific company
-        if company_name:
-            store_company_osint(company_name, final_payload)
-        
-        # Store the unwrapped event and notify subscribers
-        webhook_events.append(final_payload)
-        for queue in event_subscribers:
-            await queue.put(final_payload)
         
         # Return a success response
         return {
@@ -133,32 +86,8 @@ async def stream_webhook_events(request: Request):
     """
     Server-Sent Events (SSE) endpoint to stream webhook events to clients.
     """
-    async def event_generator():
-        # Create a queue for this client
-        queue = asyncio.Queue()
-        event_subscribers.append(queue)
-        
-        try:
-            while True:
-                # Check if client is still connected
-                if await request.is_disconnected():
-                    break
-                
-                # Wait for new events with a timeout
-                try:
-                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
-                    # Send the event in SSE format
-                    yield f"data: {json.dumps(event)}\n\n"
-                except asyncio.TimeoutError:
-                    # Send a keep-alive comment every 30 seconds
-                    yield ": keep-alive\n\n"
-                    
-        finally:
-            # Remove this client's queue when disconnected
-            event_subscribers.remove(queue)
-    
     return StreamingResponse(
-        event_generator(),
+        event_stream.sse_event_generator(request),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

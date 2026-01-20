@@ -10,5 +10,10 @@ services:
     build:
       context: server
       dockerfile: Dockerfile
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    env_file:
+      - server/.env
     ports:
       - 8000:8000

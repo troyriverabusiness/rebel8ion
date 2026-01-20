@@ -1,9 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Any, Dict, List, Optional
 import logging
-import httpx
-from datetime import datetime
+from models.attack_models import (
+    AttackRequest,
+    AttackResponse,
+    IndividualAttackRequest,
+    IndividualAttackResponse,
+)
+from api.v1.services import attack_service
 
 router = APIRouter()
 
@@ -12,96 +15,6 @@ logger = logging.getLogger(__name__)
 
 # TODO: Configure webhook URL
 WEBHOOK_URL = "https://hook.eu2.make.com/in3dmghaqii1sg7tqke23ok2cqptd8n5" 
-
-
-
-class AttackRequest(BaseModel):
-    """Request model for executing an attack"""
-    company_name: str
-
-
-class AttackResponse(BaseModel):
-    """Response model for attack execution"""
-    status: str
-    company_name: str
-    total_employees: int
-    successful_webhooks: int
-    failed_webhooks: int
-    execution_time: str
-    details: List[Dict[str, Any]]
-
-
-class IndividualAttackRequest(BaseModel):
-    """Request model for executing an individual attack on a specific employee"""
-    name: str
-    company_position: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-
-
-class IndividualAttackResponse(BaseModel):
-    """Response model for individual attack execution"""
-    status: str
-    target_name: str
-    webhook_sent: bool
-    message: str
-
-
-async def send_employee_webhook(employee: Dict[str, Any], company_name: str) -> Dict[str, Any]:
-    """
-    Send a POST request to the webhook for a single employee.
-    
-    Args:
-        employee: Employee data dictionary
-        company_name: Name of the target company
-        
-    Returns:
-        Dictionary containing success status and details
-    """
-    payload = {
-        "company_name": company_name,
-        "employee": employee,
-        "timestamp": datetime.utcnow().isoformat(),
-        "attack_type": "multi-channel"
-    }
-    
-    try:
-        # TODO: Replace WEBHOOK_URL with actual webhook endpoint
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(WEBHOOK_URL, json=payload)
-            
-            if response.status_code in [200, 201, 202]:
-                logger.info(f"Webhook sent successfully for employee: {employee.get('name')}")
-                return {
-                    "employee_name": employee.get("name"),
-                    "status": "success",
-                    "status_code": response.status_code,
-                    "message": "Webhook delivered successfully"
-                }
-            else:
-                logger.warning(f"Webhook failed for employee: {employee.get('name')} - Status: {response.status_code}")
-                return {
-                    "employee_name": employee.get("name"),
-                    "status": "failed",
-                    "status_code": response.status_code,
-                    "message": f"Webhook returned status {response.status_code}"
-                }
-    except httpx.TimeoutException:
-        logger.error(f"Webhook timeout for employee: {employee.get('name')}")
-        return {
-            "employee_name": employee.get("name"),
-            "status": "failed",
-            "error": "timeout",
-            "message": "Webhook request timed out"
-        }
-    except Exception as e:
-        logger.error(f"Webhook error for employee: {employee.get('name')} - Error: {str(e)}")
-        return {
-            "employee_name": employee.get("name"),
-            "status": "failed",
-            "error": str(e),
-            "message": f"Webhook request failed: {str(e)}"
-        }
 
 
 @router.post("/attack/execute", response_model=AttackResponse)
@@ -120,83 +33,30 @@ async def execute_attack(request: AttackRequest):
     Returns:
         AttackResponse with execution details and results
     """
-    company_name = request.company_name
-    start_time = datetime.utcnow()
-    
-    logger.info(f"[ATTACK] Initiating attack execution for company: {company_name}")
-    
-    # Import here to avoid circular dependency
-    from .osint import company_osint_data
-    
-    # Check if company has OSINT data
-    if company_name not in company_osint_data:
-        # Try case-insensitive match
-        company_name_lower = company_name.lower()
-        found = False
-        for stored_name in company_osint_data.keys():
-            if (company_name_lower in stored_name.lower() or 
-                stored_name.lower().startswith(company_name_lower)):
-                company_name = stored_name
-                found = True
-                logger.info(f"[ATTACK] Found partial match: '{request.company_name}' -> '{company_name}'")
-                break
-        
-        if not found:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No OSINT data found for company: {company_name}. Please complete reconnaissance first."
-            )
-    
-    # Get company data
-    company_data = company_osint_data[company_name]
-    osint_data = company_data.get("osint_data", {})
-    
-    # Extract employee list from OSINT data
-    # Try multiple possible locations for keyPersonnel
-    employees = (
-        osint_data.get("keyPersonnel") or 
-        osint_data.get("data", {}).get("keyPersonnel") or 
-        []
-    )
-    
-    if not employees:
-        raise HTTPException(
-            status_code=400,
-            detail=f"No employees found in OSINT data for company: {company_name}"
+    try:
+        (
+            company_name,
+            results,
+            successful_count,
+            failed_count,
+            execution_time,
+        ) = await attack_service.execute_attack(
+            requested_company_name=request.company_name,
+            webhook_url=WEBHOOK_URL,
         )
-    
-    logger.info(f"[ATTACK] Found {len(employees)} employees to target")
-    
-    # Execute attack by sending webhook for each employee
-    results = []
-    successful_count = 0
-    failed_count = 0
-    
-    for employee in employees:
-        logger.info(f"[ATTACK] Targeting employee: {employee.get('name')} ({employee.get('role')})")
-        result = await send_employee_webhook(employee, company_name)
-        results.append(result)
-        
-        if result.get("status") == "success":
-            successful_count += 1
-        else:
-            failed_count += 1
-    
-    end_time = datetime.utcnow()
-    execution_time = (end_time - start_time).total_seconds()
-    
-    logger.info(f"[ATTACK] Attack execution complete for {company_name}")
-    logger.info(f"[ATTACK] Total: {len(employees)}, Successful: {successful_count}, Failed: {failed_count}")
-    logger.info(f"[ATTACK] Execution time: {execution_time:.2f}s")
-    
+    except attack_service.CompanyOSINTNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except attack_service.NoEmployeesFoundError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     return AttackResponse(
         status="completed",
         company_name=company_name,
-        total_employees=len(employees),
+        total_employees=len(results),
         successful_webhooks=successful_count,
         failed_webhooks=failed_count,
         execution_time=f"{execution_time:.2f}s",
-        details=results
+        details=results,
     )
 
 
@@ -216,60 +76,20 @@ async def execute_individual_attack(request: IndividualAttackRequest):
     Returns:
         IndividualAttackResponse with execution result
     """
-    logger.info(f"[INDIVIDUAL ATTACK] Initiating attack on: {request.name} ({request.company_position})")
-    
-    # Default contact values for individual attacks
-    email = request.email or "hackathon@revel8.ai"
-    phones = [request.phone] if request.phone else ["+49-171 5588972", "+49 1577 8885845", "+49 1578 3022220"]
-    
-    # Build payload for the webhook
-    payload = {
-        "name": request.name,
-        "company_position": request.company_position,
-        "email": email,
-        "phones": phones,
-        "timestamp": datetime.utcnow().isoformat(),
-        "attack_type": "individual"
-    }
-    
-    logger.info(f"[INDIVIDUAL ATTACK] Payload: {payload}")
-    
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(WEBHOOK_URL, json=payload)
-            
-            if response.status_code in [200, 201, 202]:
-                logger.info(f"[INDIVIDUAL ATTACK] Webhook sent successfully for: {request.name}")
-                return IndividualAttackResponse(
-                    status="success",
-                    target_name=request.name,
-                    webhook_sent=True,
-                    message=f"Individual attack executed successfully against {request.name}"
-                )
-            else:
-                logger.warning(f"[INDIVIDUAL ATTACK] Webhook failed for: {request.name} - Status: {response.status_code}")
-                return IndividualAttackResponse(
-                    status="failed",
-                    target_name=request.name,
-                    webhook_sent=False,
-                    message=f"Webhook returned status {response.status_code}"
-                )
-    except httpx.TimeoutException:
-        logger.error(f"[INDIVIDUAL ATTACK] Webhook timeout for: {request.name}")
-        return IndividualAttackResponse(
-            status="failed",
-            target_name=request.name,
-            webhook_sent=False,
-            message="Webhook request timed out"
-        )
-    except Exception as e:
-        logger.error(f"[INDIVIDUAL ATTACK] Webhook error for: {request.name} - Error: {str(e)}")
-        return IndividualAttackResponse(
-            status="failed",
-            target_name=request.name,
-            webhook_sent=False,
-            message=f"Webhook request failed: {str(e)}"
-        )
+    webhook_sent, message = await attack_service.execute_individual_attack(
+        webhook_url=WEBHOOK_URL,
+        name=request.name,
+        company_position=request.company_position,
+        email=request.email,
+        phone=request.phone,
+    )
+
+    return IndividualAttackResponse(
+        status="success" if webhook_sent else "failed",
+        target_name=request.name,
+        webhook_sent=webhook_sent,
+        message=message,
+    )
 
 
 @router.get("/attack/webhook-config")

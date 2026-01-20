@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { type OSINTData } from "@/data/mockData";
+import { type OSINTData } from "@/types/osint";
 
 interface OSINTEngineTabProps {
   osintData: OSINTData;

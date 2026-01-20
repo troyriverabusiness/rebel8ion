@@ -225,9 +225,6 @@ Revel8 uses real-time webhooks for seamless integration with external automation
 
 **Testing webhooks:**
 ```bash
-# Use the UI test button
-Click "🔔 Test Webhook Toast" in the application
-
 # Or use curl
 curl -X POST http://localhost:8000/api/v1/webhook/make \
   -H "Content-Type: application/json" \
